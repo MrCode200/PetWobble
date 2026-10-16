@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://0yep0miik15w"]
+
+[ext_resource type="Texture2D" uid="uid://dvpe0ceornd8t" path="res://icon.svg" id="1_i2280"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_xl7b4"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_i2280")
+}],
+"loop": 1,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="Wobble" type="Node2D" unique_id=1337063919]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1623091033]
+sprite_frames = SubResource("SpriteFrames_xl7b4")
