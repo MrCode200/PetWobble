@@ -1,19 +1,231 @@
 [gd_scene format=3 uid="uid://0yep0miik15w"]
 
-[ext_resource type="Texture2D" uid="uid://dvpe0ceornd8t" path="res://icon.svg" id="1_i2280"]
+[ext_resource type="Texture2D" uid="uid://bieyydinm2rw1" path="res://spritesheet.png" id="1_i2280"]
+[ext_resource type="BehaviorTree" uid="uid://dtpwtvcotk2tr" path="res://WobbleBehaviourTree.tres" id="3_ye4jp"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mk1ew"]
+atlas = ExtResource("1_i2280")
+region = Rect2(0, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ye4jp"]
+atlas = ExtResource("1_i2280")
+region = Rect2(30, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_uq10s"]
+atlas = ExtResource("1_i2280")
+region = Rect2(0, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ynxu6"]
+atlas = ExtResource("1_i2280")
+region = Rect2(30, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lovw3"]
+atlas = ExtResource("1_i2280")
+region = Rect2(30, 90, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6migt"]
+atlas = ExtResource("1_i2280")
+region = Rect2(0, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dqob7"]
+atlas = ExtResource("1_i2280")
+region = Rect2(30, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rpfek"]
+atlas = ExtResource("1_i2280")
+region = Rect2(60, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ffimq"]
+atlas = ExtResource("1_i2280")
+region = Rect2(90, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_p7a2d"]
+atlas = ExtResource("1_i2280")
+region = Rect2(0, 30, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gcncu"]
+atlas = ExtResource("1_i2280")
+region = Rect2(30, 30, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2w84w"]
+atlas = ExtResource("1_i2280")
+region = Rect2(60, 30, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_o1ptl"]
+atlas = ExtResource("1_i2280")
+region = Rect2(90, 30, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_feks7"]
+atlas = ExtResource("1_i2280")
+region = Rect2(0, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0psij"]
+atlas = ExtResource("1_i2280")
+region = Rect2(30, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_x1x1y"]
+atlas = ExtResource("1_i2280")
+region = Rect2(60, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sx2dt"]
+atlas = ExtResource("1_i2280")
+region = Rect2(90, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b7rxl"]
+atlas = ExtResource("1_i2280")
+region = Rect2(0, 90, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v0ke0"]
+atlas = ExtResource("1_i2280")
+region = Rect2(30, 90, 30, 30)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_xl7b4"]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": ExtResource("1_i2280")
+"texture": SubResource("AtlasTexture_mk1ew")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ye4jp")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_uq10s")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ynxu6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lovw3")
 }],
 "loop": 1,
-"name": &"default",
+"name": &"idle",
 "speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6migt")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dqob7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_rpfek")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ffimq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_p7a2d")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gcncu")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2w84w")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_o1ptl")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_feks7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0psij")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_x1x1y")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_sx2dt")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b7rxl")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_v0ke0")
+}],
+"loop": 0,
+"name": &"jumping",
+"speed": 18.0
 }]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_unuvf"]
+size = Vector2(118, 117)
+
+[sub_resource type="BlackboardPlan" id="BlackboardPlan_ye4jp"]
+
+[sub_resource type="Animation" id="Animation_mk1ew"]
+resource_name = "Idle"
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("AnimatedSprite2D:animation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [&"idle"]
+}
+
+[sub_resource type="Animation" id="Animation_ye4jp"]
+resource_name = "Jump"
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("AnimatedSprite2D:animation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [&"jumping"]
+}
+
+[sub_resource type="Animation" id="Animation_uq10s"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("AnimatedSprite2D:animation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [&"jumping"]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_ynxu6"]
+_data = {
+&"Idle": SubResource("Animation_mk1ew"),
+&"Jump": SubResource("Animation_ye4jp"),
+&"RESET": SubResource("Animation_uq10s")
+}
+
 [node name="Wobble" type="Node2D" unique_id=1337063919]
+position = Vector2(58, 64)
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1623091033]
+scale = Vector2(4, 4)
 sprite_frames = SubResource("SpriteFrames_xl7b4")
+animation = &"jumping"
+autoplay = "idle"
+
+[node name="Area2D" type="Area2D" parent="." unique_id=1031739650]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=849975817]
+position = Vector2(1, -0.5)
+shape = SubResource("RectangleShape2D_unuvf")
+
+[node name="BTPlayer" type="BTPlayer" parent="." unique_id=519191477]
+behavior_tree = ExtResource("3_ye4jp")
+blackboard_plan = SubResource("BlackboardPlan_ye4jp")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1819576873]
+libraries/ = SubResource("AnimationLibrary_ynxu6")
