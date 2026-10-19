@@ -23,6 +23,9 @@ I tried coding in c# (sry to itch.io fans), and while i also tried to use this n
 ## 📔 STORY
 Wobble isn't just a new creature from another dimension. He is a old creature risen to life from my old EvolutionSimulator where they clashed to get the beset genes ever, i just love him so much i had to resurrect him, and make him SUFFER more 👹
 
+## ▶️ HOW TO PLAY
+Go to releases and download the latest, then you can run the exe when you have exported ALL files in the zip. Have fun :))
+
 ## ⚠️ WARNINGS
 - I could sadly only figure out windows release right now, as soon as i figure out the others i will publish them too, sry mac fans
 - ITCH.io doesn't work when coding godot.c#
