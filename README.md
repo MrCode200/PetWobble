@@ -11,6 +11,7 @@ Download him and watch him make your life better, in any possible way imaginable
 > NOW:
 > 1. Jump (boing boing 🐸)
 > 2. Idle (yes he needs also rest you monster `( ｡ •`ᴖ´• ｡))``
+> 3. Dragging (`smashing`work in progress lul)
 
 > FUTURE:
 > 1. Speach Bubble, Shop?!, Configs, 
