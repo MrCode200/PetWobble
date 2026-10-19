@@ -1,4 +1,7 @@
 # Release 1: PetWOBBLE
+
+(I don't have much time (as you can see by dev hours,), but i will def add here image later, thx for understanding <3 (*ˊᗜˋ*)/ᵗᑋᵃᐢᵏ ᵞᵒᵘ*)
+
 ## 🏁 Intro
 Have you ever dreamt of having a pet.
 Not just any Pet..., A squishy, wobbly & cute PET!
