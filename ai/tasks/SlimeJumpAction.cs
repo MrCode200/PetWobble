@@ -1,3 +1,4 @@
+using System;
 using Godot;
 
 namespace PetWobble.AI.Tasks;
@@ -7,9 +8,11 @@ public partial class SlimeJumpAction : BTAction
 {
 	[Export] public NodePath AnimatedSpritePath;
 	[Export] public float Speed = 300;
+	[Export] public float MaxDirectionChangePerTick = 0.1f;
+	[Export] public float FlipChance = 0.25f;
 
 	private AnimatedSprite2D _animator;
-	private Vector2 _direction;
+	private Vector2 _direction = Vector2.Left;
 	private bool _animationFinished;
 
 	private Vector2 _windowSize;
@@ -27,11 +30,16 @@ public partial class SlimeJumpAction : BTAction
 		_screenSize = DisplayServer.ScreenGetSize();
 	}
 
-	private void SetAnimationFinished() => _animationFinished = true;
+	private void SetAnimationFinished()
+	{
+		_animationFinished = true;
+		CalcNewDirection();
+	}
 
 	public override void _Enter()
 	{
 		_animator.Play(Const.Animations.Jump);
+		TryDirectionChange();
 		_animationFinished =  false;
 		_animator.AnimationFinished += SetAnimationFinished;
 	}
@@ -49,19 +57,31 @@ public partial class SlimeJumpAction : BTAction
 		if (_animator.Frame is < 2 or > 8)
 			return Status.Running;
 
-		var moveDir = GetNewDirection();
 		var newWinPos = DisplayServer.WindowGetPosition() + 
-						(moveDir * Speed * (float)delta);
+						(_direction * Speed * (float)delta);
 		newWinPos = newWinPos.Clamp(Vector2.Zero, _screenSize - _windowSize);
 		DisplayServer.WindowSetPosition((Vector2I)newWinPos);
 		// Flip if moving backwards
-		_animator.FlipH = moveDir.X < 0 ? true : false;
+		_animator.FlipH = _direction.X < 0 ? true : false;
 
 		return Status.Running;
 	}
 
-	private Vector2 GetNewDirection()
+	private void TryDirectionChange()
 	{
-		return Vector2.Left;
+		_direction *= new Vector2(
+			GD.Randf() <= FlipChance / 2 ? -1 : 1, 
+			GD.Randf() <= FlipChance / 2 ? -1 : 1
+			);
+	}
+
+	private void CalcNewDirection()
+	{
+		float angle = (float)GD.RandRange(
+			-MaxDirectionChangePerTick * GD.Randf(), 
+			MaxDirectionChangePerTick * GD.Randf()
+			);
+		
+		_direction = _direction.Rotated(angle).Normalized();
 	}
 }

@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="PetWobble"
-run/main_scene="uid://0yep0miik15w"
+run/main_scene="uid://qrwuie8km6lu"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [display]
