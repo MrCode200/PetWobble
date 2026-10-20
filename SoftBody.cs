@@ -1,11 +1,29 @@
-using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
+using System.Text.Json.Serialization;
 using Godot;
-using Godot.NativeInterop;
 using Color = Godot.Color;
 
 namespace PetWobble.Const;
+
+// if perf to low change to  record struct
+public sealed class Point
+{
+	public Vector2 Position;
+	public Vector2 Velocity;
+	public Vector2 Acceleration;
+	
+	public float DistanceTo(Point point) => (point.Position - Position).Length();
+}
+
+public readonly record struct SpringJoint
+{
+	public Point PointA { get; init; }
+	public Point PointB { get; init; }
+	public float RestLength { get; init; }
+	public float Stiffness { get; init; }
+}
 
 public partial class SoftBody : Node2D
 {
@@ -13,111 +31,262 @@ public partial class SoftBody : Node2D
 	[Export] public float ParticleRadius = 0.5f;
 	[Export] public float Radius = 90.0f;
 
-	[ExportGroup("Physics")] 
+	[ExportGroup("Physics")]
 	[Export] public Vector2 Gravity = Vector2.Down;
-	[ExportGroup("Static")]
-	[Export] public bool WindowIsWall = true;
+	// Uses velocity *= exp(-Damping * deltaTime) 
+	[Export] public float Damping = 0.5f;
+	[Export] public int MaxCollisionResolveRepetition = 5;
 
-	private Vector2[] _relPositions;
-	private Vector2[] _velocities;
+	[ExportGroup("Collisions")]
+	[Export] public bool ScreenIsWall = true;
 
-	private Vector2 _windowSize;
+	[ExportGroup("Joints")] 
+	[Export] public float JointRestLength = 10;
+	[Export] public bool UseSpawnDistanceAsRestLength;
+
+	[Export] public float JointStiffness = 100;
+
+	// Each particle being connected to the next one (first connected to last)
+	[Export] public bool CircularJoints;
+
+	private Point[] _points;
+	private SpringJoint[] _joints;
 
 	public override void _Ready()
 	{
-		_windowSize = DisplayServer.WindowGetSize();
-		_relPositions = new Vector2[ParticleCount];
-		_velocities = new Vector2[ParticleCount];
+		InitPoints();
+		InitJoints();
+	}
+
+	private void InitPoints()
+	{
+		_points = new Point[ParticleCount];
 
 		for (var i = 0; i < ParticleCount; i++)
 		{
+			var point =  new Point();
+			
 			float angle = Mathf.Tau / ParticleCount * i;
-			Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+			Vector2 direction = new(Mathf.Cos(angle), Mathf.Sin(angle));
 
-			_relPositions[i] = direction * Radius;
-			_velocities[i] = Vector2.Zero;
+			point.Position = direction * Radius;
+			point.Velocity = Vector2.Zero;
+			point.Acceleration = Vector2.Zero;
+			
+			_points[i] = point;
+			GD.Print(point);
+		}
+	}
+
+	private void InitJoints()
+	{
+		if (!CircularJoints)
+		{
+			_joints = [];
+			return;
+		}
+
+		_joints = new SpringJoint[_points.Length];
+		var prevPoint = _points[^1];
+		for (int i = 0; i < _points.Length; i++)
+		{
+			var p = _points[i];
+
+			var restLength = UseSpawnDistanceAsRestLength ? p.DistanceTo(prevPoint) : JointRestLength;
+			var joint = new SpringJoint
+			{
+				PointA = prevPoint,
+				PointB = p,
+				RestLength = restLength,
+				Stiffness = JointStiffness
+			};
+
+			prevPoint = p;
+			_joints[i] = joint;
+			GD.Print(joint);
 		}
 	}
 
 	public override void _Process(double delta)
 	{
+		CalculateAccelerations(delta);
+		UpdateVelocities(delta);
 		MovePoints(delta);
-		ResolveCollisions();
+
 		QueueRedraw();
+	}
+
+	private void UpdateVelocities(double delta)
+	{
+		foreach (var p in  _points)
+		{
+			// 1. Damping
+			p.Velocity *= (float)Mathf.Exp(-Damping * delta);
+			// 2. Acceleration
+			p.Velocity += p.Acceleration * (float)delta;
+		}
+	}
+
+	private void ApplyJointAcceleration(double delta)
+	{
+		foreach (var j in _joints)
+		{
+			// Relative From Point A
+			var distanceVector = j.PointB.Position - j.PointA.Position;
+			var distance = distanceVector.Length();
+
+			if (distance < 0.00001f)
+				continue;
+
+			Vector2 direction = distanceVector.Normalized();
+			float stretch = distance - j.RestLength;
+			var force = stretch * j.Stiffness * direction;
+			
+			j.PointA.Acceleration += force;
+			j.PointB.Acceleration -= force;
+		}
+	}
+
+	private SpringJoint[] GetJointsOfPoint(Point point)
+	{
+		return _joints.Where(j => j.PointA == point || j.PointB == point).ToArray();
+	}
+
+	private void CalculateAccelerations(double delta)
+	{
+		foreach (var p in  _points)
+		{
+			p.Acceleration = Gravity;
+		}
+		ApplyJointAcceleration(delta);
 	}
 
 	private void MovePoints(double delta)
 	{
-		for (int i = 0; i < ParticleCount; i++)
+		foreach (var p in  _points)
 		{
-			_velocities[i] += Gravity * (float)delta;
-			
-			
-			
-			_relPositions[i] += _velocities[i] * (float)delta;
+			float availableDelta = (float)delta;
+			int repetitions = 0;
+
+			while (availableDelta > 0.000001f &&
+				   repetitions < MaxCollisionResolveRepetition)
+			{
+				repetitions++;
+				
+				if (p.Velocity.LengthSquared() < 0.000001f)
+					break;
+
+				Vector2 newLocalPos = p.Position + p.Velocity * availableDelta;
+
+				if (!TryGetCollisionInfo(
+						p.Velocity,
+						newLocalPos,
+						out Vector2 collisionLocalPos,
+						out Vector2 collisionLocalNormal))
+				{
+					p.Position = newLocalPos;
+					break;
+				}
+
+				float distanceToCollision =
+					p.Position.DistanceTo(collisionLocalPos);
+
+				float timeToCollision = distanceToCollision / p.Velocity.Length();
+
+				availableDelta -= timeToCollision;
+
+				p.Position =
+					collisionLocalPos + collisionLocalNormal * 0.001f;
+
+				if (p.Velocity.Dot(collisionLocalNormal) < 0.0f)
+				{
+					p.Velocity = ReflectVelocity(
+						p.Velocity,
+						collisionLocalNormal);
+				}
+			}
 		}
 	}
 
-	private void ResolveCollisions()
+	private bool TryGetCollisionInfo(
+		Vector2 fromLocal,
+		Vector2 toLocal,
+		out Vector2 collisionLocalPos,
+		out Vector2 collisionLocalNormal)
 	{
+		collisionLocalPos = Vector2.Zero;
+		collisionLocalNormal = Vector2.Zero;
+
+		Vector2 fromGlobal = ToGlobal(fromLocal);
+		Vector2 toGlobal = ToGlobal(toLocal);
+
 		var space = GetWorld2D().DirectSpaceState;
 
-		for (int i = 0; i < ParticleCount; i++)
+		var parameters = new PhysicsRayQueryParameters2D
 		{
-			// CHECK: send ray towards location? if collision hit get normal, move to collision point and update velocity?
-			// CHECK: then when time, move not just to collision point but also if it should bounce, the path it bounces too...
-			
-			// 1. Check for any Collisions at the current space
-			var param = new PhysicsShapeQueryParameters2D
-			{
-				Shape = new CircleShape2D
-				{
-					Radius = ParticleRadius,
-				},
-				Transform = new Transform2D(0, Position + _relPositions[i]),
-				CollideWithAreas = false,
-				CollideWithBodies = true
-			};
-
-			var hits = space.IntersectShape(param);
-			if (hits.Count == 0)
-				continue;
-			
-			// hit ray from prev position to position now, 
-			// get the normal 
-			// update velocity appropriate to the normal
-			// Move Body Outside
-		}	
-	}
-
-	private CollisionObject2D[] GetCollidersAt(Vector2 pos)
-	{
-		var space = GetWorld2D().DirectSpaceState;
-
-		var param = new PhysicsPointQueryParameters2D
-		{
-			Position = pos,
+			From = fromGlobal,
+			To = toGlobal,
 			CollideWithAreas = false,
 			CollideWithBodies = true
 		};
-		var results = space.IntersectPoint(param);
-		
-		List<CollisionObject2D> colliders = [];
-		foreach (var dict in results)
-		{
-			colliders.Add((CollisionObject2D)dict["collider"]);
-		}
 
-		return colliders.ToArray();
+		var hit = space.IntersectRay(parameters);
+
+		if (hit.Count == 0)
+			return false;
+
+		Vector2 collisionGlobalPos = hit["position"].AsVector2();
+		Vector2 collisionGlobalNormal = hit["normal"].AsVector2();
+
+		collisionLocalPos = ToLocal(collisionGlobalPos);
+		collisionLocalNormal = ToLocalDirection(collisionGlobalNormal);
+
+		return true;
+	}
+
+	private Vector2 ToLocalDirection(Vector2 globalDirection)
+	{
+		return ToLocal(globalDirection) - ToLocal(Vector2.Zero);
+	}
+
+	private static Vector2 ReflectVelocity(
+		Vector2 velocity,
+		Vector2 normal)
+	{
+		float normalLengthSquared = normal.LengthSquared();
+
+		if (normalLengthSquared < 0.000001f)
+			return velocity;
+
+		return velocity
+			- 2.0f * velocity.Dot(normal)
+			/ normalLengthSquared
+			* normal;
 	}
 
 	public override void _Draw()
 	{
-		DrawCircle(Position, 5, new Color(0.5f, 0.5f, 0.5f));
-
-		for (int i = 0; i < ParticleCount; i++)
+		DrawCircle(Vector2.Zero, 5.0f, new Color(0.5f, 0.5f, 0.5f));
+		
+		foreach (var p in _points)
 		{
-			DrawCircle(Position + _relPositions[i], 4, new Color(0.5f, 0.5f, 0.7f));
+			DrawCircle(
+				p.Position,
+				4.0f,
+				new Color(0.5f, 0.5f, 0.7f));
+
+			DrawLine(
+				p.Position,
+				p.Position + p.Velocity,
+				new Color(0.5f, 0.5f, 0.5f));
+		}
+		
+		foreach (var j in _joints)
+		{
+			DrawLine(
+				j.PointA.Position, 
+				j.PointB.Position, new Color(0.2f, 0.4f, 0.6f)
+			);
 		}
 	}
 }
