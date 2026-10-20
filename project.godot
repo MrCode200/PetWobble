@@ -16,8 +16,8 @@ config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [display]
 
-window/size/viewport_width=200
-window/size/viewport_height=200
+window/size/viewport_width=400
+window/size/viewport_height=400
 window/size/borderless=true
 window/size/always_on_top=true
 window/size/transparent=true
@@ -31,7 +31,7 @@ project/assembly_name="PetWobble"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_super-wakatime/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_super-wakatime/plugin.cfg", "res://addons/softbody2d/plugin.cfg")
 
 [physics]
 
@@ -41,4 +41,5 @@ enabled=PackedStringArray("res://addons/godot_super-wakatime/plugin.cfg")
 
 textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
+textures/vram_compression/import_etc2_astc=true
 viewport/transparent_background=true
