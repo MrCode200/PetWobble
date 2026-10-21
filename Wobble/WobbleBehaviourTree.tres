@@ -1,0 +1,88 @@
+[gd_resource type="BehaviorTree" format=3 uid="uid://dtpwtvcotk2tr"]
+
+[ext_resource type="Script" uid="uid://ee36s87p1a76" path="res://ai/tasks/IsDragging.cs" id="1_2xfxq"]
+[ext_resource type="Script" uid="uid://b56pfaf32ubqm" path="res://ai/tasks/SlimeJumpAction.cs" id="1_u6asx"]
+[ext_resource type="Script" uid="uid://b4e77ho0mlmit" path="res://ai/tasks/WindowFollowCursor.cs" id="2_00os5"]
+
+[sub_resource type="BlackboardPlan" id="BlackboardPlan_mk1ew"]
+var/IsDragging/name = &"IsDragging"
+var/IsDragging/type = 1
+var/IsDragging/value = false
+var/IsDragging/hint = 0
+var/IsDragging/hint_string = ""
+
+[sub_resource type="BTCondition" id="BTCondition_00os5"]
+script = ExtResource("1_2xfxq")
+ColliderPath = NodePath("Area2D")
+
+[sub_resource type="BBVariant" id="BBVariant_s2vrk"]
+resource_name = "idle"
+saved_value = &"idle"
+type = 21
+
+[sub_resource type="BBNode" id="BBNode_pm1us"]
+resource_name = "AnimatedSprite2D"
+saved_value = NodePath("AnimatedSprite2D")
+
+[sub_resource type="BTCallMethod" id="BTCallMethod_d7hiu"]
+node = SubResource("BBNode_pm1us")
+method = &"play"
+args = Array[BBVariant]([SubResource("BBVariant_s2vrk")])
+
+[sub_resource type="BTAction" id="BTAction_tk5wh"]
+script = ExtResource("2_00os5")
+NodeToOverlap = NodePath(".")
+Offset = Vector2(-3, -17)
+
+[sub_resource type="BTSequence" id="BTSequence_d7hiu"]
+custom_name = "Sequence Dragging"
+children = [SubResource("BTCondition_00os5"), SubResource("BTCallMethod_d7hiu"), SubResource("BTAction_tk5wh")]
+
+[sub_resource type="BBVariant" id="BBVariant_pm1us"]
+resource_name = "idle"
+saved_value = &"idle"
+type = 21
+
+[sub_resource type="BBNode" id="BBNode_d7hiu"]
+resource_name = "AnimatedSprite2D"
+saved_value = NodePath("AnimatedSprite2D")
+
+[sub_resource type="BTCallMethod" id="BTCallMethod_3ouvy"]
+node = SubResource("BBNode_d7hiu")
+method = &"play"
+args = Array[BBVariant]([SubResource("BBVariant_pm1us")])
+
+[sub_resource type="BTRandomWait" id="BTRandomWait_6bko2"]
+min_duration = 0.5
+
+[sub_resource type="BTSequence" id="BTSequence_2netc"]
+custom_name = "Sequence Idle"
+children = [SubResource("BTCallMethod_3ouvy"), SubResource("BTRandomWait_6bko2")]
+metadata/_weight_ = 1.0
+
+[sub_resource type="BTAction" id="BTAction_pm1us"]
+script = ExtResource("1_u6asx")
+AnimatedSpritePath = NodePath("AnimatedSprite2D")
+MaxDirectionChangePerTick = 0.65
+
+[sub_resource type="BTProbability" id="BTProbability_pm1us"]
+children = [SubResource("BTAction_pm1us")]
+run_chance = 0.768
+
+[sub_resource type="BTRepeatUntilFailure" id="BTRepeatUntilFailure_w1cy5"]
+custom_name = "RepeatUntilFailure Jump"
+children = [SubResource("BTProbability_pm1us")]
+
+[sub_resource type="BTSequence" id="BTSequence_pw66u"]
+custom_name = "Sequence Moving"
+children = [SubResource("BTRepeatUntilFailure_w1cy5")]
+
+[sub_resource type="BTProbabilitySelector" id="BTProbabilitySelector_w2pji"]
+children = [SubResource("BTSequence_2netc"), SubResource("BTSequence_pw66u")]
+
+[sub_resource type="BTDynamicSelector" id="BTDynamicSelector_w1h3i"]
+children = [SubResource("BTSequence_d7hiu"), SubResource("BTProbabilitySelector_w2pji")]
+
+[resource]
+blackboard_plan = SubResource("BlackboardPlan_mk1ew")
+root_task = SubResource("BTDynamicSelector_w1h3i")

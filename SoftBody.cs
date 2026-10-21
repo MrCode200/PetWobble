@@ -15,6 +15,11 @@ public sealed class Point
 	public Vector2 Acceleration;
 	
 	public float DistanceTo(Point point) => (point.Position - Position).Length();
+
+	public override string ToString()
+	{
+		return $"Point(Position: {Position}, Velocity: {Velocity}, Acceleration: {Acceleration})";
+	}
 }
 
 public readonly record struct SpringJoint
@@ -124,10 +129,11 @@ public partial class SoftBody : Node2D
 			p.Velocity *= (float)Mathf.Exp(-Damping * delta);
 			// 2. Acceleration
 			p.Velocity += p.Acceleration * (float)delta;
+			ApplyJointVelocity(delta);
 		}
 	}
 
-	private void ApplyJointAcceleration(double delta)
+	private void ApplyJointVelocity(double delta)
 	{
 		foreach (var j in _joints)
 		{
@@ -139,11 +145,11 @@ public partial class SoftBody : Node2D
 				continue;
 
 			Vector2 direction = distanceVector.Normalized();
-			float stretch = distance - j.RestLength;
-			var force = stretch * j.Stiffness * direction;
+			float stretch = (distance - j.RestLength) / 2;
+			var force = stretch * j.Stiffness * direction * (float)delta;
 			
-			j.PointA.Acceleration += force;
-			j.PointB.Acceleration -= force;
+			j.PointA.Velocity += force;
+			j.PointB.Velocity -= force;
 		}
 	}
 
@@ -158,7 +164,6 @@ public partial class SoftBody : Node2D
 		{
 			p.Acceleration = Gravity;
 		}
-		ApplyJointAcceleration(delta);
 	}
 
 	private void MovePoints(double delta)
