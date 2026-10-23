@@ -1,7 +1,5 @@
-using System.Drawing;
+using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text.Json.Serialization;
 using Godot;
 using Color = Godot.Color;
 
@@ -10,15 +8,24 @@ namespace PetWobble.Const;
 // if perf to low change to  record struct
 public sealed class Point
 {
-	public Vector2 Position;
-	public Vector2 Velocity;
+	public Vector2 Position { get; private set; }
+	public Vector2 PreviousPosition;
 	public Vector2 Acceleration;
+	public readonly List<Vector2> Corrections = [];
 	
+	public Vector2 Velocity(float delta) => (Position - PreviousPosition) / delta;
 	public float DistanceTo(Point point) => (point.Position - Position).Length();
+	public void SetPosition(Vector2 position) => Position = position;
 
+	public void UpdatePositionsUsingCorrections()
+	{
+		var sumOfCorrections = Corrections.Aggregate(Vector2.Zero, (a, b) => a + b);
+		Position += sumOfCorrections / Corrections.Count;
+		Corrections.Clear();
+	}
 	public override string ToString()
 	{
-		return $"Point(Position: {Position}, Velocity: {Velocity}, Acceleration: {Acceleration})";
+		return $"Point(Position: {Position}, Acceleration: {Acceleration})";
 	}
 }
 
@@ -27,20 +34,25 @@ public readonly record struct SpringJoint
 	public Point PointA { get; init; }
 	public Point PointB { get; init; }
 	public float RestLength { get; init; }
-	public float Stiffness { get; init; }
 }
 
 public partial class SoftBody : Node2D
 {
-	[Export] public int ParticleCount = 32;
-	[Export] public float ParticleRadius = 0.5f;
+	[ExportGroup("Points&Blob")] 
+	[Export] public int PointCount = 32;
+	[Export] public float PointRadius = 0.5f;
 	[Export] public float Radius = 90.0f;
+	// If 0, will be calculated from points
+	[Export] public float DesiredArea = 0f;
+	[Export] public float AreaPressureCoefficient = 0.1f;
 
 	[ExportGroup("Physics")]
 	[Export] public Vector2 Gravity = Vector2.Down;
 	// Uses velocity *= exp(-Damping * deltaTime) 
 	[Export] public float Damping = 0.5f;
+	[Export] public float TotalCorrectionIterations = 1;
 	[Export] public int MaxCollisionResolveRepetition = 5;
+	[Export] public int JointConstraintIterations = 5;
 
 	[ExportGroup("Collisions")]
 	[Export] public bool ScreenIsWall = true;
@@ -48,34 +60,36 @@ public partial class SoftBody : Node2D
 	[ExportGroup("Joints")] 
 	[Export] public float JointRestLength = 10;
 	[Export] public bool UseSpawnDistanceAsRestLength;
+	[Export] public float JointStiffness = 0.5f;
 
-	[Export] public float JointStiffness = 100;
-
-	// Each particle being connected to the next one (first connected to last)
+	// Each Point being connected to the next one (first connected to last)
 	[Export] public bool CircularJoints;
 
 	private Point[] _points;
-	private SpringJoint[] _joints;
+	private SpringJoint[] _joints; 
+	private double _previousDelta = 1.0 / 60.0;
+	private float _desiredArea;
 
 	public override void _Ready()
 	{
 		InitPoints();
 		InitJoints();
+		_desiredArea = DesiredArea == 0 ? CalculateCurrentArea() : DesiredArea;
 	}
-
+	
 	private void InitPoints()
 	{
-		_points = new Point[ParticleCount];
+		_points = new Point[PointCount];
 
-		for (var i = 0; i < ParticleCount; i++)
+		for (var i = 0; i < PointCount; i++)
 		{
 			var point =  new Point();
 			
-			float angle = Mathf.Tau / ParticleCount * i;
+			float angle = Mathf.Tau / PointCount * i;
 			Vector2 direction = new(Mathf.Cos(angle), Mathf.Sin(angle));
 
-			point.Position = direction * Radius;
-			point.Velocity = Vector2.Zero;
+			point.SetPosition(direction * Radius);
+			point.PreviousPosition = point.Position;
 			point.Acceleration = Vector2.Zero;
 			
 			_points[i] = point;
@@ -102,8 +116,7 @@ public partial class SoftBody : Node2D
 			{
 				PointA = prevPoint,
 				PointB = p,
-				RestLength = restLength,
-				Stiffness = JointStiffness
+				RestLength = restLength
 			};
 
 			prevPoint = p;
@@ -114,102 +127,189 @@ public partial class SoftBody : Node2D
 
 	public override void _Process(double delta)
 	{
-		CalculateAccelerations(delta);
-		UpdateVelocities(delta);
-		MovePoints(delta);
+		var dt = (float)delta;
+		
+		CalculateAccelerations();
+		ApplyForces(dt);
+		
+		for (int i = 0; i < TotalCorrectionIterations; i++)
+		{
+			AddJointConstraints();
+			AddAreaConstraints();
+			ResolveCollisionsAdvanced(dt);
+			
+			foreach(var p in _points)
+				p.UpdatePositionsUsingCorrections();
+		}
+		// TODO: Add hard clamp for collision at the end?
 
+		_previousDelta = delta;
 		QueueRedraw();
 	}
 
-	private void UpdateVelocities(double delta)
+	private void ApplyForces(float delta)
 	{
 		foreach (var p in  _points)
 		{
 			// 1. Damping
-			p.Velocity *= (float)Mathf.Exp(-Damping * delta);
-			// 2. Acceleration
-			p.Velocity += p.Acceleration * (float)delta;
-			ApplyJointVelocity(delta);
-		}
-	}
-
-	private void ApplyJointVelocity(double delta)
-	{
-		foreach (var j in _joints)
-		{
-			// Relative From Point A
-			var distanceVector = j.PointB.Position - j.PointA.Position;
-			var distance = distanceVector.Length();
-
-			if (distance < 0.00001f)
-				continue;
-
-			Vector2 direction = distanceVector.Normalized();
-			float stretch = (distance - j.RestLength) / 2;
-			var force = stretch * j.Stiffness * direction * (float)delta;
+			Vector2 velocity = (p.Position - p.PreviousPosition) / (float)_previousDelta;
 			
-			j.PointA.Velocity += force;
-			j.PointB.Velocity -= force;
+			velocity *= Mathf.Exp(-Damping * delta);
+			Vector2 newPos = p.Position + velocity * delta + p.Acceleration * delta * delta; 
+			p.PreviousPosition = p.Position;
+			p.SetPosition(newPos);
 		}
 	}
-
-	private SpringJoint[] GetJointsOfPoint(Point point)
-	{
-		return _joints.Where(j => j.PointA == point || j.PointB == point).ToArray();
-	}
-
-	private void CalculateAccelerations(double delta)
+	
+	private void CalculateAccelerations()
 	{
 		foreach (var p in  _points)
 		{
 			p.Acceleration = Gravity;
 		}
 	}
+	
+	private void AddJointConstraints()
+	{
+		for (int iter = 0; iter < JointConstraintIterations; iter++)
+		{
+			foreach (var j in _joints)
+			{
+				// Relative From Point A
+				var distanceVector = j.PointB.Position - j.PointA.Position;
+				var distance = distanceVector.Length();
 
-	private void MovePoints(double delta)
+				if (distance < 0.000001f)
+					continue;
+
+				Vector2 direction = distanceVector.Normalized();
+				float stretch = (distance - j.RestLength) * 0.5f;
+				Vector2 correction = direction * stretch * JointStiffness;
+				
+				j.PointA.Corrections.Add(correction);
+				j.PointB.Corrections.Add(-correction);
+			}
+		}
+	}
+
+	private void AddAreaConstraints()
+	{
+		var area = CalculateCurrentArea();
+		
+		if (_desiredArea < 0.000001f || !float.IsFinite(area))
+			return;
+		
+		var normalizedAreaError = (_desiredArea - area) / _desiredArea;
+		var areaDisplacement = normalizedAreaError * AreaPressureCoefficient;
+
+		for (int i = 0; i < _points.Length; i++)
+		{
+			var prevPoint = _points[(i - 1 + _points.Length) % _points.Length];
+			var currentPoint = _points[i];
+			var nextPoint = _points[(i + 1) % _points.Length];
+			
+			var neighbourDistanceVector = prevPoint.Position - nextPoint.Position;
+			var outwardNormalVector = new Vector2(
+				-neighbourDistanceVector.Y, 
+				neighbourDistanceVector.X
+			);
+			
+			if (outwardNormalVector.LengthSquared() < 0.000001f)
+				continue;
+			
+			var stretch = outwardNormalVector * areaDisplacement;
+			currentPoint.Corrections.Add(stretch);
+		}
+	}
+	
+	private float CalculateCurrentArea()
+	{
+		float signedArea = 0.0f;
+		var prevPoint = _points[^1];
+
+		foreach (var p in _points)
+		{
+			float width = p.Position.X - prevPoint.Position.X;
+			float height = (p.Position.Y + prevPoint.Position.Y) * 0.5f;
+
+			signedArea += width * height;
+
+			prevPoint = p;
+		}
+
+		return Mathf.Abs(signedArea);
+	}
+
+	private void ResolveCollisionsSimple()
+	{
+		foreach (var p in _points)
+		{
+			// Simple collision handling for Verlet
+			if (TryGetCollisionInfo(
+					p.PreviousPosition,
+					p.Position,
+					out Vector2 collisionLocalPos,
+					out Vector2 collisionLocalNormal))
+			{
+				// Push position out of collision
+				var newPos = collisionLocalPos + collisionLocalNormal * 0.001f;
+				p.Corrections.Add(newPos - p.Position);
+				
+				// Update previous position to reflect the bounce
+				// This ensures velocity (Position - PreviousPosition) reflects the new direction
+				Vector2 velocity = p.Position - p.PreviousPosition;
+				Vector2 reflectedVelocity = ReflectVelocity(velocity, collisionLocalNormal);
+				p.PreviousPosition = p.Position - reflectedVelocity;
+			}
+		}
+	} 
+	
+	private void ResolveCollisionsAdvanced(float delta)
 	{
 		foreach (var p in  _points)
 		{
-			float availableDelta = (float)delta;
+			float availableDelta = delta;
 			int repetitions = 0;
+			Vector2 startPos = p.PreviousPosition;
+			Vector2 finalPos = p.Position;
+			Vector2 velocity = p.Velocity(delta);
 
 			while (availableDelta > 0.000001f &&
-				   repetitions < MaxCollisionResolveRepetition)
+			       repetitions < MaxCollisionResolveRepetition)
 			{
 				repetitions++;
 				
-				if (p.Velocity.LengthSquared() < 0.000001f)
+				if (velocity.LengthSquared() < 0.000001f)
 					break;
-
-				Vector2 newLocalPos = p.Position + p.Velocity * availableDelta;
-
+				
 				if (!TryGetCollisionInfo(
-						p.Velocity,
-						newLocalPos,
-						out Vector2 collisionLocalPos,
-						out Vector2 collisionLocalNormal))
-				{
-					p.Position = newLocalPos;
+					    startPos,
+					    finalPos,
+					    out Vector2 collisionLocalPos,
+					    out Vector2 collisionLocalNormal))
 					break;
-				}
 
 				float distanceToCollision =
-					p.Position.DistanceTo(collisionLocalPos);
+					startPos.DistanceTo(collisionLocalPos);
 
-				float timeToCollision = distanceToCollision / p.Velocity.Length();
+				float timeToCollision = distanceToCollision / velocity.Length();
 
 				availableDelta -= timeToCollision;
 
-				p.Position =
+				startPos =
 					collisionLocalPos + collisionLocalNormal * 0.001f;
 
-				if (p.Velocity.Dot(collisionLocalNormal) < 0.0f)
+				if (velocity.Dot(collisionLocalNormal) < 0.0f)
 				{
-					p.Velocity = ReflectVelocity(
-						p.Velocity,
+					velocity = ReflectVelocity(
+						velocity,
 						collisionLocalNormal);
 				}
+				finalPos = startPos + velocity * availableDelta;
 			}
+			
+			p.Corrections.Add(finalPos - p.Position);
+			p.PreviousPosition = p.Position - velocity * delta;
 		}
 	}
 
@@ -224,6 +324,11 @@ public partial class SoftBody : Node2D
 
 		Vector2 fromGlobal = ToGlobal(fromLocal);
 		Vector2 toGlobal = ToGlobal(toLocal);
+
+		// Check if vectors are finite before raycast
+		if (!float.IsFinite(fromGlobal.X) || !float.IsFinite(fromGlobal.Y) ||
+		    !float.IsFinite(toGlobal.X) || !float.IsFinite(toGlobal.Y))
+			return false;
 
 		var space = GetWorld2D().DirectSpaceState;
 
@@ -271,8 +376,6 @@ public partial class SoftBody : Node2D
 
 	public override void _Draw()
 	{
-		DrawCircle(Vector2.Zero, 5.0f, new Color(0.5f, 0.5f, 0.5f));
-		
 		foreach (var p in _points)
 		{
 			DrawCircle(
@@ -280,18 +383,25 @@ public partial class SoftBody : Node2D
 				4.0f,
 				new Color(0.5f, 0.5f, 0.7f));
 
+			Vector2 velocity = p.Velocity((float)_previousDelta);
+			if (velocity == Vector2.Zero)
+				continue;
+			
 			DrawLine(
 				p.Position,
-				p.Position + p.Velocity,
+				p.Position + velocity,
 				new Color(0.5f, 0.5f, 0.5f));
+		
 		}
 		
 		foreach (var j in _joints)
 		{
-			DrawLine(
-				j.PointA.Position, 
-				j.PointB.Position, new Color(0.2f, 0.4f, 0.6f)
-			);
+			{
+				DrawLine(
+					j.PointA.Position,
+					j.PointB.Position, new Color(0.2f, 0.4f, 0.6f)
+				);
+			}
 		}
 	}
 }
