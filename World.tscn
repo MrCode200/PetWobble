@@ -224,7 +224,7 @@ metadata/_local_pose_override_enabled_ = true
 [node name="Bone-6" type="Bone2D" parent="SoftBody2D/Skeleton2D" unique_id=1393040125]
 position = Vector2(49.817284, 20.603771)
 rotation = 1.6389441
-scale = Vector2(0.99999934, 0.99999934)
+scale = Vector2(0.9999993, 0.9999993)
 rest = Transform2D(-0.06809509, 0.9976788, -0.9976788, -0.06809509, 49.817284, 20.603771)
 auto_calculate_length_and_angle = false
 length = 30.0
@@ -928,17 +928,21 @@ damping = 4.21
 metadata/joint_distance = 20.587118
 
 [node name="SoftBody" type="Node2D" parent="." unique_id=618972135]
-position = Vector2(160, 46)
+position = Vector2(186, 69)
 script = ExtResource("4_js7pq")
-PointCount = 16
+PointCount = 64
 Radius = 50.0
+AreaPressureCoefficient = 0.59
 Gravity = Vector2(0, 500)
 Damping = 0.25
-TotalCorrectionIterations = 10.0
-MaxCollisionResolveRepetition = 10
-JointConstraintIterations = 10
-JointRestLength = 16.0
+MaxCollisionResolveIterations = 4
+Friction = 1.0
+Restitution = 0.001
+JointRestLength = 4.0
 UseSpawnDistanceAsRestLength = true
 CircularJoints = true
+DrawPoints = false
+DrawVelocity = false
 
 [node name="Wobble" parent="." unique_id=1979134453 instance=ExtResource("1_2dftf")]
+position = Vector2(62, 31)

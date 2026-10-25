@@ -227,6 +227,7 @@ shape = SubResource("RectangleShape2D_unuvf")
 
 [node name="BTPlayer" type="BTPlayer" parent="." unique_id=519191477]
 behavior_tree = ExtResource("3_ye4jp")
+active = false
 blackboard_plan = SubResource("BlackboardPlan_ye4jp")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1819576873]

@@ -7,26 +7,18 @@ namespace PetWobble.Const;
 
 // if perf to low change to  record struct
 public sealed class Point
-{
-	public Vector2 Position { get; private set; }
-	public Vector2 PreviousPosition;
-	public Vector2 Acceleration;
-	public readonly List<Vector2> Corrections = [];
+{ 
+	// CHECK: Prediction vs Position Usage...
+	public Vector2 Position;          // committed position (end of last substep)
+	public Vector2 Predicted;         // working position during a substep
+	public Vector2 Velocity;
+	public Vector2 PreSolveVelocity;  // velocity before constraints/collision (impact speed) / starting velocity 
+	public Vector2 ContactNormal;
+	public bool InContact;
 	
-	public Vector2 Velocity(float delta) => (Position - PreviousPosition) / delta;
 	public float DistanceTo(Point point) => (point.Position - Position).Length();
-	public void SetPosition(Vector2 position) => Position = position;
 
-	public void UpdatePositionsUsingCorrections()
-	{
-		var sumOfCorrections = Corrections.Aggregate(Vector2.Zero, (a, b) => a + b);
-		Position += sumOfCorrections / Corrections.Count;
-		Corrections.Clear();
-	}
-	public override string ToString()
-	{
-		return $"Point(Position: {Position}, Acceleration: {Acceleration})";
-	}
+	public override string ToString() => $"Point(Position: {Position}, Velocity: {Velocity})";
 }
 
 public readonly record struct SpringJoint
@@ -40,23 +32,29 @@ public partial class SoftBody : Node2D
 {
 	[ExportGroup("Points&Blob")] 
 	[Export] public int PointCount = 32;
+	// Used as collision skin: points are kept this far away from walls
 	[Export] public float PointRadius = 0.5f;
 	[Export] public float Radius = 90.0f;
-	// If 0, will be calculated from points
+	// If 0, will be calculated from the initial points
 	[Export] public float DesiredArea = 0f;
-	[Export] public float AreaPressureCoefficient = 0.1f;
+	// 0..1: fraction of the area error corrected per solver iteration
+	[Export(PropertyHint.Range, "0,1,0.01")] public float AreaPressureCoefficient = 0.1f;
 
 	[ExportGroup("Physics")]
 	[Export] public Vector2 Gravity = Vector2.Down;
 	// Uses velocity *= exp(-Damping * deltaTime) 
 	[Export] public float Damping = 0.5f;
-	[Export] public float TotalCorrectionIterations = 1;
-	[Export] public int MaxCollisionResolveRepetition = 5;
-	[Export] public int JointConstraintIterations = 5;
+	[Export] public float Substeps = 4;
+	[Export] public int MaxCollisionResolveIterations = 5;
 
 	[ExportGroup("Collisions")]
 	[Export] public bool ScreenIsWall = true;
-
+	[Export(PropertyHint.Layers2DPhysics)] public uint CollisionMask = 1;
+	[Export] public bool RemoveNormalUponCollision = true;
+	[Export(PropertyHint.Range, "0,1,0.01")] public float Friction = 0.02f;
+	[Export] public float RestitutionThreshold = 30f;
+	[Export] public float Restitution = 0.5f;
+	
 	[ExportGroup("Joints")] 
 	[Export] public float JointRestLength = 10;
 	[Export] public bool UseSpawnDistanceAsRestLength;
@@ -64,17 +62,24 @@ public partial class SoftBody : Node2D
 
 	// Each Point being connected to the next one (first connected to last)
 	[Export] public bool CircularJoints;
+	
+	[ExportGroup("Debug")]
+	[Export] public bool DrawPoints = true;
+	[Export] public bool DrawJoints = true;
+	[Export] public bool DrawVelocity = true;
 
 	private Point[] _points;
 	private SpringJoint[] _joints; 
-	private double _previousDelta = 1.0 / 60.0;
+	private Vector2[] _areaGradients;
 	private float _desiredArea;
 
 	public override void _Ready()
 	{
 		InitPoints();
 		InitJoints();
-		_desiredArea = DesiredArea == 0 ? CalculateCurrentArea() : DesiredArea;
+		_areaGradients = new Vector2[_points.Length];
+		_desiredArea = DesiredArea == 0 ? Mathf.Abs(SignedArea()) : DesiredArea;
+		GD.Print("_desiredArea: " + _desiredArea);
 	}
 	
 	private void InitPoints()
@@ -88,11 +93,12 @@ public partial class SoftBody : Node2D
 			float angle = Mathf.Tau / PointCount * i;
 			Vector2 direction = new(Mathf.Cos(angle), Mathf.Sin(angle));
 
-			point.SetPosition(direction * Radius);
-			point.PreviousPosition = point.Position;
-			point.Acceleration = Vector2.Zero;
-			
-			_points[i] = point;
+			_points[i] = new Point
+			{
+				Position = direction * Radius,
+				Predicted = direction * Radius,
+				Velocity = Vector2.Zero
+			};
 			GD.Print(point);
 		}
 	}
@@ -110,207 +116,181 @@ public partial class SoftBody : Node2D
 		for (int i = 0; i < _points.Length; i++)
 		{
 			var p = _points[i];
-
 			var restLength = UseSpawnDistanceAsRestLength ? p.DistanceTo(prevPoint) : JointRestLength;
-			var joint = new SpringJoint
+ 
+			_joints[i] = new SpringJoint
 			{
 				PointA = prevPoint,
 				PointB = p,
 				RestLength = restLength
 			};
-
 			prevPoint = p;
-			_joints[i] = joint;
-			GD.Print(joint);
+			GD.Print(_joints[i]);
 		}
 	}
 
-	public override void _Process(double delta)
+	public override void _PhysicsProcess(double delta)
 	{
-		var dt = (float)delta;
-		
-		CalculateAccelerations();
-		ApplyForces(dt);
-		
-		for (int i = 0; i < TotalCorrectionIterations; i++)
-		{
-			AddJointConstraints();
-			AddAreaConstraints();
-			ResolveCollisionsAdvanced(dt);
-			
-			foreach(var p in _points)
-				p.UpdatePositionsUsingCorrections();
-		}
-		// TODO: Add hard clamp for collision at the end?
-
-		_previousDelta = delta;
+		float h = (float)delta / Substeps;
+ 
+		for (int s = 0; s < Substeps; s++)
+			Step(h);
+ 
 		QueueRedraw();
 	}
-
-	private void ApplyForces(float delta)
-	{
-		foreach (var p in  _points)
-		{
-			// 1. Damping
-			Vector2 velocity = (p.Position - p.PreviousPosition) / (float)_previousDelta;
-			
-			velocity *= Mathf.Exp(-Damping * delta);
-			Vector2 newPos = p.Position + velocity * delta + p.Acceleration * delta * delta; 
-			p.PreviousPosition = p.Position;
-			p.SetPosition(newPos);
-		}
-	}
 	
-	private void CalculateAccelerations()
+	private void Step(float h)
 	{
-		foreach (var p in  _points)
+		// 1. Integrate & Predict
+		float damp = Mathf.Exp(-Damping * h);
+		foreach (var p in _points)
 		{
-			p.Acceleration = Gravity;
+			p.Velocity += Gravity * h;
+			p.Velocity *= damp;
+			p.PreSolveVelocity = p.Velocity;
+			p.Predicted = p.Position + p.Velocity * h;
+			p.InContact = false;
 		}
-	}
-	
-	private void AddJointConstraints()
-	{
-		for (int iter = 0; iter < JointConstraintIterations; iter++)
-		{
-			foreach (var j in _joints)
-			{
-				// Relative From Point A
-				var distanceVector = j.PointB.Position - j.PointA.Position;
-				var distance = distanceVector.Length();
-
-				if (distance < 0.000001f)
-					continue;
-
-				Vector2 direction = distanceVector.Normalized();
-				float stretch = (distance - j.RestLength) * 0.5f;
-				Vector2 correction = direction * stretch * JointStiffness;
-				
-				j.PointA.Corrections.Add(correction);
-				j.PointB.Corrections.Add(-correction);
-			}
-		}
-	}
-
-	private void AddAreaConstraints()
-	{
-		var area = CalculateCurrentArea();
 		
-		if (_desiredArea < 0.000001f || !float.IsFinite(area))
+		// 2. Soft constraints
+		SolveJoints();
+		SolveArea();
+		
+		// 3. Hard Constraint: Solve Collision
+		SolveCollisions();
+		
+		// 4. Updated Velocity from position
+		foreach (var p in _points)
+		{
+			Vector2 v = (p.Predicted - p.Position) / h;
+
+			if (p.InContact && RemoveNormalUponCollision)
+			{
+				Vector2 n = p.ContactNormal;
+
+				float vn = v.Dot(n);
+				if (vn < 0f)
+					v -= n * vn;
+
+				Vector2 vt = v - n * v.Dot(n);
+				v = vt * (1f - Friction);
+			}
+			else if (p.InContact)
+			{
+				Vector2 n = p.ContactNormal;
+				// vnImpact < 0, means velocity and normal (which is perpendicular to the wall) are pointing in opposite directions
+				// thus our point is moving into the wall
+				float vnImpact = p.PreSolveVelocity.Dot(n); 
+				float vn = v.Dot(n);
+				Vector2 vt = (v - n * vn) * (1 - Friction); // Velocity after the momentum taken by the wall
+
+				float newVn = Mathf.Max(vn, 0f); // Removes the velocity that is pointing into the wall
+				if (vnImpact < -RestitutionThreshold)
+					newVn = Mathf.Max(vn, -vnImpact * Restitution);
+				
+				v = vt + n * newVn;
+			}
+			
+			p.Velocity = v;
+			p.Position = p.Predicted;
+		}
+	}
+	
+	private void SolveJoints()
+	{
+		foreach (var j in _joints)
+		{
+			// Relative From Point A
+			var dVec = j.PointB.Predicted - j.PointA.Predicted; // DistanceVector
+			var d = dVec.Length(); 
+			if (d < 0.000001f)
+				continue;
+
+			Vector2 direction = dVec.Normalized();
+			float stretch = (d - j.RestLength) * 0.5f;
+			Vector2 correction = direction * stretch * JointStiffness;
+			
+			j.PointA.Predicted += correction;
+			j.PointB.Predicted -= correction;
+		}
+	}
+	
+	private void SolveArea()
+	{
+		if (_desiredArea < 0.000001f)
+			return;
+
+		float area = SignedArea();
+		if (!float.IsFinite(area))
+			return;
+
+		int n = _points.Length;
+		float denom = 0; // demoniator / Nenner
+		for (int i = 0; i < n; i++)
+		{
+			Vector2 prev = _points[(i - 1 + n) % n].Predicted;
+			Vector2 next = _points[(i + 1) % n].Predicted;
+			
+			// Get Vector2 diff = (prev - next)
+			// Mirror at y axis (-y)
+			// Mirror at origin, where direction is the normal: (x, -y) -> (-y, x)
+			
+			// Why Gradient is not Normalized!:
+			// 1. The longer the distance between the neighbours, the stronger this point influences the area, 
+			// thus they should receive larger corrections
+			// 2. 
+			Vector2 gradient = 0.5f * new Vector2(next.Y - prev.Y, prev.X - next.X); // CHECK: why not normalized?
+			_areaGradients[i] = gradient;
+
+			denom += gradient.LengthSquared();
+		}
+		
+		if (denom < 0.000001f)
 			return;
 		
-		var normalizedAreaError = (_desiredArea - area) / _desiredArea;
-		var areaDisplacement = normalizedAreaError * AreaPressureCoefficient;
-
+		// Why division by denom!:
+		// 1. The larger the areaError, the larger should the correction be, 
+		// the smaller the denom/change is, relative to the error, thus changes the influence of the gradients...
+		float s = (_desiredArea - area) / denom * AreaPressureCoefficient;
+		for (int i = 0; i < n; i++)
+			_points[i].Predicted += _areaGradients[i] * s;
+	}
+	
+	private float SignedArea()
+	{
+		float sum = 0;
 		for (int i = 0; i < _points.Length; i++)
 		{
-			var prevPoint = _points[(i - 1 + _points.Length) % _points.Length];
-			var currentPoint = _points[i];
-			var nextPoint = _points[(i + 1) % _points.Length];
-			
-			var neighbourDistanceVector = prevPoint.Position - nextPoint.Position;
-			var outwardNormalVector = new Vector2(
-				-neighbourDistanceVector.Y, 
-				neighbourDistanceVector.X
-			);
-			
-			if (outwardNormalVector.LengthSquared() < 0.000001f)
-				continue;
-			
-			var stretch = outwardNormalVector * areaDisplacement;
-			currentPoint.Corrections.Add(stretch);
+			Vector2 a = _points[i].Predicted;
+			Vector2 b = _points[(i + 1) % _points.Length].Predicted;
+			sum += a.X * b.Y - b.X * a.Y;
 		}
+		return sum * 0.5f;
 	}
 	
-	private float CalculateCurrentArea()
-	{
-		float signedArea = 0.0f;
-		var prevPoint = _points[^1];
-
-		foreach (var p in _points)
-		{
-			float width = p.Position.X - prevPoint.Position.X;
-			float height = (p.Position.Y + prevPoint.Position.Y) * 0.5f;
-
-			signedArea += width * height;
-
-			prevPoint = p;
-		}
-
-		return Mathf.Abs(signedArea);
-	}
-
-	private void ResolveCollisionsSimple()
+	private void SolveCollisions()
 	{
 		foreach (var p in _points)
 		{
-			// Simple collision handling for Verlet
-			if (TryGetCollisionInfo(
-					p.PreviousPosition,
-					p.Position,
-					out Vector2 collisionLocalPos,
-					out Vector2 collisionLocalNormal))
+			for (int i = 0; i < MaxCollisionResolveIterations; i++)
 			{
-				// Push position out of collision
-				var newPos = collisionLocalPos + collisionLocalNormal * 0.001f;
-				p.Corrections.Add(newPos - p.Position);
-				
-				// Update previous position to reflect the bounce
-				// This ensures velocity (Position - PreviousPosition) reflects the new direction
-				Vector2 velocity = p.Position - p.PreviousPosition;
-				Vector2 reflectedVelocity = ReflectVelocity(velocity, collisionLocalNormal);
-				p.PreviousPosition = p.Position - reflectedVelocity;
-			}
-		}
-	} 
-	
-	private void ResolveCollisionsAdvanced(float delta)
-	{
-		foreach (var p in  _points)
-		{
-			float availableDelta = delta;
-			int repetitions = 0;
-			Vector2 startPos = p.PreviousPosition;
-			Vector2 finalPos = p.Position;
-			Vector2 velocity = p.Velocity(delta);
-
-			while (availableDelta > 0.000001f &&
-			       repetitions < MaxCollisionResolveRepetition)
-			{
-				repetitions++;
-				
-				if (velocity.LengthSquared() < 0.000001f)
-					break;
-				
 				if (!TryGetCollisionInfo(
-					    startPos,
-					    finalPos,
-					    out Vector2 collisionLocalPos,
-					    out Vector2 collisionLocalNormal))
+						fromLocal: p.Position, p.Predicted, 
+						out Vector2 hitPos, out Vector2 normal))
 					break;
-
-				float distanceToCollision =
-					startPos.DistanceTo(collisionLocalPos);
-
-				float timeToCollision = distanceToCollision / velocity.Length();
-
-				availableDelta -= timeToCollision;
-
-				startPos =
-					collisionLocalPos + collisionLocalNormal * 0.001f;
-
-				if (velocity.Dot(collisionLocalNormal) < 0.0f)
-				{
-					velocity = ReflectVelocity(
-						velocity,
-						collisionLocalNormal);
-				}
-				finalPos = startPos + velocity * availableDelta;
+				
+				// TODO: try make the slide be in the reflected direction
+				Vector2 remaining = p.Predicted - hitPos;
+				// Slide is the remaining distance, assuming the wall
+				// takes in all momentum perpendicularly to its normal after collision
+				Vector2 slide = remaining - normal * remaining.Dot(normal);
+				
+				p.Predicted = hitPos + normal * PointRadius + slide;
+				p.ContactNormal = normal;
+				p.InContact = true;
 			}
-			
-			p.Corrections.Add(finalPos - p.Position);
-			p.PreviousPosition = p.Position - velocity * delta;
 		}
+		
 	}
 
 	private bool TryGetCollisionInfo(
@@ -324,10 +304,12 @@ public partial class SoftBody : Node2D
 
 		Vector2 fromGlobal = ToGlobal(fromLocal);
 		Vector2 toGlobal = ToGlobal(toLocal);
+		
+		if (fromGlobal.DistanceSquaredTo(toGlobal) < 0.0000001f) return false;
 
 		// Check if vectors are finite before raycast
 		if (!float.IsFinite(fromGlobal.X) || !float.IsFinite(fromGlobal.Y) ||
-		    !float.IsFinite(toGlobal.X) || !float.IsFinite(toGlobal.Y))
+			!float.IsFinite(toGlobal.X) || !float.IsFinite(toGlobal.Y))
 			return false;
 
 		var space = GetWorld2D().DirectSpaceState;
@@ -337,19 +319,20 @@ public partial class SoftBody : Node2D
 			From = fromGlobal,
 			To = toGlobal,
 			CollideWithAreas = false,
-			CollideWithBodies = true
+			CollideWithBodies = true,
+			CollisionMask = CollisionMask
 		};
 
 		var hit = space.IntersectRay(parameters);
-
 		if (hit.Count == 0)
 			return false;
 
-		Vector2 collisionGlobalPos = hit["position"].AsVector2();
-		Vector2 collisionGlobalNormal = hit["normal"].AsVector2();
-
-		collisionLocalPos = ToLocal(collisionGlobalPos);
-		collisionLocalNormal = ToLocalDirection(collisionGlobalNormal);
+		Vector2 globalNormal = hit["normal"].AsVector2();
+		if (globalNormal.LengthSquared() < 0.000001f)
+			return false; // started inside a collider: no usable normal
+ 
+		collisionLocalPos = ToLocal(hit["position"].AsVector2());
+		collisionLocalNormal = ToLocalDirection(globalNormal).Normalized();
 
 		return true;
 	}
@@ -359,7 +342,7 @@ public partial class SoftBody : Node2D
 		return ToLocal(globalDirection) - ToLocal(Vector2.Zero);
 	}
 
-	private static Vector2 ReflectVelocity(
+	/*private static Vector2 ReflectVelocity(
 		Vector2 velocity,
 		Vector2 normal)
 	{
@@ -372,34 +355,56 @@ public partial class SoftBody : Node2D
 			- 2.0f * velocity.Dot(normal)
 			/ normalLengthSquared
 			* normal;
-	}
+	}*/
 
 	public override void _Draw()
 	{
 		foreach (var p in _points)
 		{
-			DrawCircle(
-				p.Position,
-				4.0f,
-				new Color(0.5f, 0.5f, 0.7f));
+			if (DrawPoints)
+			{
+				var pColor = p.InContact 
+					? new Color(0.8f, 0.0f, 0f) 
+					: new Color(0.5f, 0.5f, 0.7f);
+				DrawCircle(
+					p.Position,
+					4.0f,
+					pColor);
+			}
 
-			Vector2 velocity = p.Velocity((float)_previousDelta);
-			if (velocity == Vector2.Zero)
-				continue;
-			
-			DrawLine(
-				p.Position,
-				p.Position + velocity,
-				new Color(0.5f, 0.5f, 0.5f));
-		
+			if (DrawVelocity)
+			{
+				Vector2 velocity = p.Velocity;
+				if (velocity == Vector2.Zero)
+					continue;
+	
+				DrawLine(
+					p.Position,
+					p.Position + velocity,
+					new Color(0.5f, 0.5f, 0.5f));
+			}
 		}
 		
-		foreach (var j in _joints)
+		if (DrawJoints)
 		{
+			foreach (var j in _joints)
 			{
+				float distance = j.PointA.Position.DistanceTo(j.PointB.Position);
+				float ratio = distance / j.RestLength;
+				float deviation = Mathf.Abs(ratio - 1.0f);
+			
+				// Interpolate from blue (ideal) to red (compressed/stretched)
+				// deviation 0 = blue, deviation 0.5+ = red
+				float t = Mathf.Clamp(deviation * 2.0f, 0f, 1f);
+				Color jColor = new Color(
+					t,           // red increases with deviation
+					0.2f * (1 - t), // green decreases
+					1.0f - t     // blue decreases
+				);
+			
 				DrawLine(
 					j.PointA.Position,
-					j.PointB.Position, new Color(0.2f, 0.4f, 0.6f)
+					j.PointB.Position, jColor
 				);
 			}
 		}
