@@ -4,7 +4,12 @@
 [ext_resource type="Script" uid="uid://bwaf1dldegls" path="res://Common/MouseInteractionHandler.cs" id="2_bcbcq"]
 [ext_resource type="Texture2D" uid="uid://ccjyvtmqvyuv0" path="res://Wobble/Pedaret_2 (1).png" id="2_eu7l1"]
 [ext_resource type="Script" uid="uid://kol6k5y6rb8a" path="res://addons/softbody2d/softbody2d.gd" id="2_js7pq"]
-[ext_resource type="Script" uid="uid://s7j2fnltcxsa" path="res://SoftBody.cs" id="4_js7pq"]
+[ext_resource type="Script" uid="uid://b1h0s4njkslkf" path="res://SoftBody/Components/MouseSoftBodyPusher.cs" id="2_wygdx"]
+[ext_resource type="Curve" uid="uid://ddsgq2dk370h0" path="res://temp/mousepushercurve.tres" id="3_bah7m"]
+[ext_resource type="Script" uid="uid://s7j2fnltcxsa" path="res://SoftBody/SoftBody.cs" id="4_js7pq"]
+[ext_resource type="Texture2D" uid="uid://t62giojiv2tm" path="res://Wobble/slimeball.png" id="5_p1v5b"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bah7m"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_00os5"]
 
@@ -116,10 +121,18 @@ radius = 14.0
 unique_name_in_owner = true
 script = ExtResource("2_bcbcq")
 
-[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=2126810230]
+[node name="MousePusher" type="Node2D" parent="Systems" unique_id=1719991611 node_paths=PackedStringArray("SoftBody")]
+script = ExtResource("2_wygdx")
+SoftBody = NodePath("../../SoftBody")
+Shape = SubResource("CircleShape2D_bah7m")
+ShapeSpeed = 20.0
+MaxSpeed = 1000.0
+DistanceToForceRatioCurve = ExtResource("3_bah7m")
+
+[node name="Floor" type="StaticBody2D" parent="." unique_id=2126810230]
 physics_material_override = SubResource("PhysicsMaterial_00os5")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=708007231]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor" unique_id=708007231]
 position = Vector2(215.5, 190)
 shape = SubResource("RectangleShape2D_xl7b4")
 
@@ -223,8 +236,8 @@ metadata/_local_pose_override_enabled_ = true
 
 [node name="Bone-6" type="Bone2D" parent="SoftBody2D/Skeleton2D" unique_id=1393040125]
 position = Vector2(49.817284, 20.603771)
-rotation = 1.6389441
-scale = Vector2(0.9999993, 0.9999993)
+rotation = 1.6389439
+scale = Vector2(0.99999905, 0.99999905)
 rest = Transform2D(-0.06809509, 0.9976788, -0.9976788, -0.06809509, 49.817284, 20.603771)
 auto_calculate_length_and_angle = false
 length = 30.0
@@ -927,22 +940,26 @@ stiffness = 128.0
 damping = 4.21
 metadata/joint_distance = 20.587118
 
-[node name="SoftBody" type="Node2D" parent="." unique_id=618972135]
+[node name="SoftBody" type="Node2D" parent="." unique_id=618972135 node_paths=PackedStringArray("BodyPolygon")]
 position = Vector2(186, 69)
 script = ExtResource("4_js7pq")
 PointCount = 64
+PointRadius = 1.0
 Radius = 50.0
-AreaPressureCoefficient = 0.59
-Gravity = Vector2(0, 500)
-Damping = 0.25
+AreaPressureCoefficient = 0.22
+Gravity = Vector2(0, 200)
+Damping = 0.175
 MaxCollisionResolveIterations = 4
-Friction = 1.0
-Restitution = 0.001
-JointRestLength = 4.0
 UseSpawnDistanceAsRestLength = true
+JointStiffness = 0.38
 CircularJoints = true
+BodyPolygon = NodePath("Polygon2D")
+BodyTexture = ExtResource("5_p1v5b")
 DrawPoints = false
+JointWidth = 2.5
 DrawVelocity = false
 
+[node name="Polygon2D" type="Polygon2D" parent="SoftBody" unique_id=1987883066]
+
 [node name="Wobble" parent="." unique_id=1979134453 instance=ExtResource("1_2dftf")]
-position = Vector2(62, 31)
+position = Vector2(0, 83)
