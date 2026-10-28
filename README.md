@@ -42,10 +42,6 @@ Go to releases and download the latest, then you can run the exe when you have e
 - I could sadly only figure out windows release right now, as soon as i figure out the others i will publish them too, sry mac fans
 - ITCH.io doesn't work when coding godot.c#
 
-HAVE fun playing with our fella :))
+> [!NOTE] 
+> HAVE fun playing with our fella :))
 
-DEV NOTES:
-Open through the below, 
-```cmd
-"/Users/username/pet-wobble/addons/Godot_mono.app/Contents/MacOS/Godot" --project-manager
-```
