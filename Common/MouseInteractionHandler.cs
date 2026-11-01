@@ -18,43 +18,47 @@ public partial class MouseInteractionHandler : Node
 
 	public override void _Input(InputEvent @event)
 	{
-		// if mousebutton and press start tracking
-		if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left or MouseButton.Right } mouseClick)
+		if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left or MouseButton.Right } click)
 		{
-			if (!Pressed && mouseClick.Pressed) // guards against press from another btn
+			Vector2 world = ToWorld(click.Position);
+
+			if (!Pressed && click.Pressed)
 			{
 				Pressed = true;
 				Dragging = false;
-				_activeBtn = mouseClick.ButtonIndex;
-				PressPos = mouseClick.Position;
+				_activeBtn = click.ButtonIndex;
+				PressPos = world;
 			}
-			else if (!mouseClick.Pressed && mouseClick.ButtonIndex == _activeBtn) // Release
+			else if (!click.Pressed && click.ButtonIndex == _activeBtn)
 			{
 				Pressed = false;
 				if (Dragging)
 				{
 					Dragging = false;
-					EmitSignal(SignalName.DragEnded, @event, mouseClick.Position,  PressPos);
+					EmitSignal(SignalName.DragEnded, @event, world, PressPos);
 				}
 				else
 				{
 					EmitSignal(SignalName.Clicked, @event, PressPos);
 				}
-					
 			}
 		}
-		else if (@event is InputEventMouseMotion mouseMotion && Pressed)
+		else if (@event is InputEventMouseMotion motion && Pressed)
 		{
-			if (!Dragging &&
-				mouseMotion.Position.DistanceTo(PressPos) >= DragThreshold)
+			Vector2 world = ToWorld(motion.Position);
+
+			if (!Dragging && world.DistanceTo(PressPos) >= DragThreshold)
 			{
 				Dragging = true;
-				EmitSignal(SignalName.DragStarted, @event, mouseMotion.Position, PressPos);
+				EmitSignal(SignalName.DragStarted, @event, world, PressPos);
 			}
-			else if (Pressed && Dragging)
+			else if (Dragging)
 			{
-				EmitSignal(SignalName.DragMoved, @event, mouseMotion.Position, PressPos);
+				EmitSignal(SignalName.DragMoved, @event, world, PressPos);
 			}
 		}
 	}
+	
+	private Vector2 ToWorld(Vector2 viewportPos)
+		=> GetViewport().CanvasTransform.AffineInverse() * viewportPos;
 }

@@ -9,7 +9,7 @@ public partial class MouseSoftBodyPusher : Node2D
 	[Export] public SoftBody SoftBody;
 	[Export] public Shape2D Shape;
 	[Export] public float Force = 1f;
-	[Export] public float ShapeSpeed = 5f;
+	[Export] public float LerpSpeed = 5f;
 	[Export] public float MaxSpeed = 10f;
 	
 	[Export] public Curve DistanceToForceRatioCurve;
@@ -17,12 +17,10 @@ public partial class MouseSoftBodyPusher : Node2D
 	[ExportGroup( "Debug")]
 	[Export] public bool DrawShape;
 	
-	private SoftBodyApi _sbapi;
 	private Vector2 _shapeCenter;
 	
 	public override void _Ready()
 	{
-		_sbapi = new(SoftBody);
 		DistanceToForceRatioCurve.Bake();
 		_shapeCenter = GetGlobalMousePosition();
 	}
@@ -33,12 +31,12 @@ public partial class MouseSoftBodyPusher : Node2D
 		var mousePos = GetGlobalMousePosition();
 
 		// Smooth follow
-		float t = 1f - Mathf.Exp(-ShapeSpeed * dt);
+		float t = 1f - Mathf.Exp(-LerpSpeed * dt);
 		var targetPos = _shapeCenter.Lerp(mousePos, t);
 
 		// Limit movement speed
 		var movement = targetPos - _shapeCenter;	
-		if (MaxSpeed < 0)
+		if (MaxSpeed > 0)
 		{
 			float maxStep = MaxSpeed * dt;
 
@@ -49,7 +47,7 @@ public partial class MouseSoftBodyPusher : Node2D
 		
 		
 		// Find Points and apply forces
-		var overlaps = _sbapi.GetPoints(_shapeCenter, Shape);
+		var overlaps = SoftBody.SBApi.GetPoints(_shapeCenter, Shape);
 		foreach (var p in overlaps)
 		{
 			Vector2 globalPos = SoftBody.ToGlobal(p.Position);
@@ -59,7 +57,7 @@ public partial class MouseSoftBodyPusher : Node2D
 			var ratio = Mathf.Clamp(ShapeCenterToPointDistanceRatio(p, _shapeCenter, Shape), 0f, 1f);
 			var force = Force * DistanceToForceRatioCurve.SampleBaked(ratio);
 			
-			_sbapi.ApplyForce(p, globalDir.Normalized(), force);
+			SoftBody.SBApi.ApplyForce(p, globalDir.Normalized() * force);
 		}
 		
 		if (DrawShape)
@@ -86,7 +84,7 @@ public partial class MouseSoftBodyPusher : Node2D
 			switch (Shape)
 			{
 				case CircleShape2D circle:
-					DrawCircle(_shapeCenter, circle.Radius, new Color(0.2f, 0.2f, 0.8f));
+					DrawCircle(_shapeCenter, circle.Radius, new Color(0.8f, 0.2f, 0.2f, 0.5f));
 					break;
 			}
 			

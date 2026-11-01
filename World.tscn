@@ -4,17 +4,24 @@
 [ext_resource type="Script" uid="uid://bwaf1dldegls" path="res://Common/MouseInteractionHandler.cs" id="2_bcbcq"]
 [ext_resource type="Texture2D" uid="uid://ccjyvtmqvyuv0" path="res://Wobble/Pedaret_2 (1).png" id="2_eu7l1"]
 [ext_resource type="Script" uid="uid://kol6k5y6rb8a" path="res://addons/softbody2d/softbody2d.gd" id="2_js7pq"]
-[ext_resource type="Script" uid="uid://b1h0s4njkslkf" path="res://SoftBody/Components/MouseSoftBodyPusher.cs" id="2_wygdx"]
+[ext_resource type="Script" uid="uid://b1h0s4njkslkf" path="res://SoftBody/Extensions/MouseSoftBodyPusher.cs" id="2_wygdx"]
 [ext_resource type="Curve" uid="uid://ddsgq2dk370h0" path="res://temp/mousepushercurve.tres" id="3_bah7m"]
+[ext_resource type="Script" uid="uid://bv281yrw8826n" path="res://SoftBody/Extensions/MouseSoftBodyDragger.cs" id="4_fv4w7"]
 [ext_resource type="Script" uid="uid://s7j2fnltcxsa" path="res://SoftBody/SoftBody.cs" id="4_js7pq"]
+[ext_resource type="Script" uid="uid://vamc8br2jd3a" path="res://SoftBody/Extensions/WindowFollowSoftBodyCenter.cs" id="5_fvag4"]
 [ext_resource type="Texture2D" uid="uid://t62giojiv2tm" path="res://Wobble/slimeball.png" id="5_p1v5b"]
+[ext_resource type="Script" uid="uid://85io4b3330hj" path="res://Common/ManageDisplayWallColliders.cs" id="6_kva58"]
+[ext_resource type="Curve" uid="uid://2jo0jsv72eco" path="res://temp/reverse_air_densityCurve.tres" id="11_f5c0m"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_bah7m"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_cgf4g"]
+radius = 15.0
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_00os5"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_xl7b4"]
-size = Vector2(645, 20)
+size = Vector2(646.7, 20)
 
 [sub_resource type="SkeletonModification2DLookAt" id="SkeletonModification2DLookAt_bcbcq"]
 resource_local_to_scene = true
@@ -125,15 +132,54 @@ script = ExtResource("2_bcbcq")
 script = ExtResource("2_wygdx")
 SoftBody = NodePath("../../SoftBody")
 Shape = SubResource("CircleShape2D_bah7m")
-ShapeSpeed = 20.0
+Force = 50.0
 MaxSpeed = 1000.0
 DistanceToForceRatioCurve = ExtResource("3_bah7m")
 
-[node name="Floor" type="StaticBody2D" parent="." unique_id=2126810230]
+[node name="MouseDragger" type="Node2D" parent="Systems" unique_id=241003329 node_paths=PackedStringArray("SB", "MIH")]
+script = ExtResource("4_fv4w7")
+SB = NodePath("../../SoftBody")
+MIH = NodePath("../MouseInteractionHandler")
+Shape = SubResource("CircleShape2D_cgf4g")
+LerpSpeed = 12.0
+MaxSpeed = 2800.0
+ClosestPointCount = 3
+UnfreezeDelay = 0.01
+DrawShape = false
+
+[node name="WindowFollowSBCenter" type="Node2D" parent="Systems" unique_id=1328930297 node_paths=PackedStringArray("SB")]
+script = ExtResource("5_fvag4")
+SB = NodePath("../../SoftBody")
+
+[node name="ManageDisplayWallColliders" type="Node2D" parent="Systems" unique_id=455070765 node_paths=PackedStringArray("Up", "Down", "Left", "Right")]
+script = ExtResource("6_kva58")
+Up = NodePath("Up")
+Down = NodePath("Down")
+Left = NodePath("Left")
+Right = NodePath("Right")
+
+[node name="Up" type="StaticBody2D" parent="Systems/ManageDisplayWallColliders" unique_id=2126810230]
 physics_material_override = SubResource("PhysicsMaterial_00os5")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor" unique_id=708007231]
-position = Vector2(215.5, 190)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Systems/ManageDisplayWallColliders/Up" unique_id=708007231]
+shape = SubResource("RectangleShape2D_xl7b4")
+
+[node name="Down" type="StaticBody2D" parent="Systems/ManageDisplayWallColliders" unique_id=1231890481]
+physics_material_override = SubResource("PhysicsMaterial_00os5")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Systems/ManageDisplayWallColliders/Down" unique_id=2105767316]
+shape = SubResource("RectangleShape2D_xl7b4")
+
+[node name="Left" type="StaticBody2D" parent="Systems/ManageDisplayWallColliders" unique_id=231608762]
+physics_material_override = SubResource("PhysicsMaterial_00os5")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Systems/ManageDisplayWallColliders/Left" unique_id=995784857]
+shape = SubResource("RectangleShape2D_xl7b4")
+
+[node name="Right" type="StaticBody2D" parent="Systems/ManageDisplayWallColliders" unique_id=1524179961]
+physics_material_override = SubResource("PhysicsMaterial_00os5")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Systems/ManageDisplayWallColliders/Right" unique_id=1562925400]
 shape = SubResource("RectangleShape2D_xl7b4")
 
 [node name="SoftBody2D" type="Polygon2D" parent="." unique_id=1820491336]
@@ -236,8 +282,8 @@ metadata/_local_pose_override_enabled_ = true
 
 [node name="Bone-6" type="Bone2D" parent="SoftBody2D/Skeleton2D" unique_id=1393040125]
 position = Vector2(49.817284, 20.603771)
-rotation = 1.6389439
-scale = Vector2(0.99999905, 0.99999905)
+rotation = 1.6389444
+scale = Vector2(0.9999986, 0.9999986)
 rest = Transform2D(-0.06809509, 0.9976788, -0.9976788, -0.06809509, 49.817284, 20.603771)
 auto_calculate_length_and_angle = false
 length = 30.0
@@ -940,26 +986,34 @@ stiffness = 128.0
 damping = 4.21
 metadata/joint_distance = 20.587118
 
+[node name="Polygon2D" type="Polygon2D" parent="." unique_id=1987883066]
+position = Vector2(500, 500)
+texture = ExtResource("5_p1v5b")
+polygon = PackedVector2Array(57.899227, 89.01721, 57.466885, 99.089676, 54.30455, 108.66678, 48.409534, 116.8642, 40.024235, 122.556854, 30.184456, 124.90718, 20.200226, 124.94196, 10.229542, 124.526474, 0.26734033, 124.67911, -9.710965, 124.85144, -19.673641, 124.66215, -29.6625, 124.56004, -39.457924, 122.38995, -47.7448, 116.572495, -53.541245, 108.31349, -56.60327, 98.701225, -56.917465, 88.61896, -54.772224, 78.76807, -50.51664, 69.62182, -44.49838, 61.518494, -37.074574, 54.671204, -28.555387, 49.23657, -19.242321, 45.30548, -9.410822, 42.94214, 0.6726058, 42.1758, 10.749774, 43.015484, 20.562777, 45.44783, 29.848537, 49.437725, 38.32909, 54.926357, 45.710346, 61.8156, 51.66515, 69.96321, 55.85133, 79.14121, 0.46854448, 87.24705)
+uv = PackedVector2Array(22, 11, 21.788637, 13.145993, 21.162674, 15.209518, 20.146164, 17.111273, 18.778175, 18.778175, 17.11127, 20.146166, 15.2095175, 21.162674, 13.145993, 21.78864, 10.999999, 22, 8.854006, 21.788637, 6.7904816, 21.162674, 4.888726, 20.146164, 3.2218256, 18.778175, 1.8538338, 17.11127, 0.83732414, 15.209517, 0.21136159, 13.145993, 0, 10.999999, 0.2113629, 8.854005, 0.8373261, 6.7904825, 1.8538344, 4.8887267, 3.2218268, 3.221825, 4.88873, 1.8538325, 6.7904854, 0.8373235, 8.854006, 0.2113629, 11, 0, 13.145994, 0.2113629, 15.20952, 0.8373261, 17.111275, 1.8538358, 18.778177, 3.2218282, 20.146164, 4.8887267, 21.162676, 6.7904825, 21.78864, 8.854008, 11, 11)
+polygons = [PackedInt32Array(32, 0, 1), PackedInt32Array(32, 1, 2), PackedInt32Array(32, 2, 3), PackedInt32Array(32, 3, 4), PackedInt32Array(32, 4, 5), PackedInt32Array(32, 5, 6), PackedInt32Array(32, 6, 7), PackedInt32Array(32, 7, 8), PackedInt32Array(32, 8, 9), PackedInt32Array(32, 9, 10), PackedInt32Array(32, 10, 11), PackedInt32Array(32, 11, 12), PackedInt32Array(32, 12, 13), PackedInt32Array(32, 13, 14), PackedInt32Array(32, 14, 15), PackedInt32Array(32, 15, 16), PackedInt32Array(32, 16, 17), PackedInt32Array(32, 17, 18), PackedInt32Array(32, 18, 19), PackedInt32Array(32, 19, 20), PackedInt32Array(32, 20, 21), PackedInt32Array(32, 21, 22), PackedInt32Array(32, 22, 23), PackedInt32Array(32, 23, 24), PackedInt32Array(32, 24, 25), PackedInt32Array(32, 25, 26), PackedInt32Array(32, 26, 27), PackedInt32Array(32, 27, 28), PackedInt32Array(32, 28, 29), PackedInt32Array(32, 29, 30), PackedInt32Array(32, 30, 31), PackedInt32Array(32, 31, 0)]
+
 [node name="SoftBody" type="Node2D" parent="." unique_id=618972135 node_paths=PackedStringArray("BodyPolygon")]
-position = Vector2(186, 69)
+position = Vector2(500, 500)
 script = ExtResource("4_js7pq")
-PointCount = 64
-PointRadius = 1.0
 Radius = 50.0
-AreaPressureCoefficient = 0.22
-Gravity = Vector2(0, 200)
-Damping = 0.175
-MaxCollisionResolveIterations = 4
+AreaPressureCoefficient = 0.5
+Gravity = Vector2(0, 250)
+MaxSpeed = 3850.0
+MaxCollisionResolveIterations = 1
+Friction = 1.0
+Restitution = 1.0
 UseSpawnDistanceAsRestLength = true
-JointStiffness = 0.38
 CircularJoints = true
-BodyPolygon = NodePath("Polygon2D")
+AirDrag = 9.999999999999972e-06
+AirDensityCurve = ExtResource("11_f5c0m")
+BodyPolygon = NodePath("../Polygon2D")
 BodyTexture = ExtResource("5_p1v5b")
 DrawPoints = false
-JointWidth = 2.5
 DrawVelocity = false
-
-[node name="Polygon2D" type="Polygon2D" parent="SoftBody" unique_id=1987883066]
+ArrowVelocitySizeMultiplier = 4.0
+ArrowDragSizeMultiplier = 5000.0
+MaxDebugLineLength = 80.0
 
 [node name="Wobble" parent="." unique_id=1979134453 instance=ExtResource("1_2dftf")]
 position = Vector2(0, 83)
