@@ -1,14 +1,20 @@
 using System;
 using Godot;
 
-namespace PetWobble.Const;
+namespace PetWobble.SoftBody.Extensions;
  
 // TODO: make it soft follow/ Drag variable add to it
 public partial class MouseSoftBodyPusher : Node2D
 {
 	[Export] public SoftBody SoftBody;
 	[Export] public Shape2D Shape;
+	
+	[ExportGroup("Force")] 
 	[Export] public float Force = 1f;
+	[Export] public float ReferenceSpeed = 8f; // pusher speed at which force is max, if 0 unlimited
+	[Export] public Curve SpeedToForceRatioCurve;
+	
+	[ExportGroup("Follow")]
 	[Export] public float LerpSpeed = 5f;
 	[Export] public float MaxSpeed = 10f;
 	
@@ -22,6 +28,7 @@ public partial class MouseSoftBodyPusher : Node2D
 	public override void _Ready()
 	{
 		DistanceToForceRatioCurve.Bake();
+		SpeedToForceRatioCurve.Bake();
 		_shapeCenter = GetGlobalMousePosition();
 	}
 	
@@ -31,8 +38,12 @@ public partial class MouseSoftBodyPusher : Node2D
 		var mousePos = GetGlobalMousePosition();
 
 		// Smooth follow
-		float t = 1f - Mathf.Exp(-LerpSpeed * dt);
-		var targetPos = _shapeCenter.Lerp(mousePos, t);
+		var targetPos = mousePos;
+		if (LerpSpeed > 0)
+		{
+			float t = 1f - Mathf.Exp(-LerpSpeed * dt);
+			targetPos = _shapeCenter.Lerp(mousePos, t);
+		}
 
 		// Limit movement speed
 		var movement = targetPos - _shapeCenter;	
@@ -43,11 +54,23 @@ public partial class MouseSoftBodyPusher : Node2D
 			if (movement.Length() > maxStep)
 				movement = movement.Normalized() * maxStep;
 		}
+		
+		// Velocity of the pusher per second
+		float velocityForce = 1;
+		if (ReferenceSpeed > 0)
+		{
+			var pusherV = movement.Length() / dt;
+			var speedRatio = ReferenceSpeed <= 0 ?
+				1f :
+				Mathf.Clamp(pusherV / ReferenceSpeed, 0f, 1f);
+			velocityForce = SpeedToForceRatioCurve.SampleBaked(speedRatio) * Force;
+			//GD.Print($"Speed: {pusherV}, Ratio: {speedRatio}, Force: {velocityForce}");
+		}
+		
 		_shapeCenter += movement;
 		
-		
 		// Find Points and apply forces
-		var overlaps = SoftBody.SBApi.GetPoints(_shapeCenter, Shape);
+		var overlaps = SoftBody.SBApi.GetPointsInsideShape(_shapeCenter, Shape);
 		foreach (var p in overlaps)
 		{
 			Vector2 globalPos = SoftBody.ToGlobal(p.Position);
@@ -55,7 +78,8 @@ public partial class MouseSoftBodyPusher : Node2D
 			if (globalDir.LengthSquared() < 0.000001f) continue;
 			
 			var ratio = Mathf.Clamp(ShapeCenterToPointDistanceRatio(p, _shapeCenter, Shape), 0f, 1f);
-			var force = Force * DistanceToForceRatioCurve.SampleBaked(ratio);
+			var force = velocityForce * DistanceToForceRatioCurve.SampleBaked(ratio);
+			
 			
 			SoftBody.SBApi.ApplyForce(p, globalDir.Normalized() * force);
 		}

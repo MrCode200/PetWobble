@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Godot;
 
 namespace PetWobble.Const.Common;
@@ -5,6 +6,8 @@ namespace PetWobble.Const.Common;
 public partial class MouseInteractionHandler : Node
 {
 	[Export] public float DragThreshold = 10f;
+	[Export] public bool UseInput = true;
+	[Export] public bool UseUnhandledInput;
 
 	[Signal] public delegate void ClickedEventHandler(InputEvent @event, Vector2 pressPos);
 	[Signal] public delegate void DragStartedEventHandler(InputEvent @event, Vector2 currentPos,  Vector2 pressPos);
@@ -16,7 +19,33 @@ public partial class MouseInteractionHandler : Node
 	private MouseButton _activeBtn;
 	public Vector2 PressPos;
 
+	// [StructLayout(LayoutKind.Sequential)]
+	// public struct POINT
+	// {
+	// 	public int X;
+	// 	public int Y;
+	// }
+	//
+	// [DllImport("user32.dll")]
+	// public static extern bool GetCursorPos(out POINT lpPoint);
+
 	public override void _Input(InputEvent @event)
+	{
+		if (!UseInput)
+			return;
+		
+		EvaluateInput(@event);
+	}
+
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		if (!UseUnhandledInput)
+			return;
+		
+		EvaluateInput(@event);
+	}
+
+	public void EvaluateInput(InputEvent @event)
 	{
 		if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left or MouseButton.Right } click)
 		{

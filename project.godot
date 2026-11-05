@@ -13,6 +13,8 @@ config_version=5
 config/name="PetWobble"
 run/main_scene="uid://qrwuie8km6lu"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
+run/max_fps=120
+config/icon="uid://dnksfwo64r0w7"
 
 [display]
 

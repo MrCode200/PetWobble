@@ -2,7 +2,7 @@ using System.Linq;
 using Godot;
 using PetWobble.Const.Common;
 
-namespace PetWobble.Const;
+namespace PetWobble.SoftBody.Extensions;
 
 public partial class MouseSoftBodyDragger : Node2D
 {
@@ -42,14 +42,16 @@ public partial class MouseSoftBodyDragger : Node2D
 
     private void OnDragStarted(InputEvent @event, Vector2 currentPos, Vector2 pressPos)
     {
+        GD.Print("Drag Started");
         _unfreezeCountdown = -1f; // Cancels Countdown
         UnfreezePoints();
         _shapeCenter = pressPos; // Starts Drag Lerping at drag position.
         
-        var overlap = SB.SBApi.GetPoints(pressPos, Shape).Concat(SB.SBApi.GetPoints(currentPos, Shape)).ToArray();
-        GD.Print(overlap.Length);
+        var overlap = SB.SBApi.GetPointsInsideShape(pressPos, Shape).Concat(SB.SBApi.GetPointsInsideShape(currentPos, Shape)).ToArray();
         if (overlap.Length == 0)
             return;
+        
+        GD.Print($"{overlap.Length} points inside shape");
 
         _overlappingPoints = ClosestPointCount == -1 
             ? overlap 

@@ -6,7 +6,7 @@ using Godot.Collections;
 using Color = Godot.Color;
 using Vector2 = Godot.Vector2;
 
-namespace PetWobble.Const;
+namespace PetWobble.SoftBody;
 
 // if perf to low change to  record struct
 // Point could be a class as now; record struct would copy large-ish vectors on every access and may not help performance.
@@ -49,8 +49,9 @@ public readonly record struct SpringJoint
 	public float Stiffness { get; init; }
 }
 
-//[Tool]
-public partial class SoftBody : Node2D
+[Tool]
+[GlobalClass]
+public partial class SoftBody : Polygon2D
 {
 	[ExportGroup("Points&Blob")] 
 	[Export] public int PointCount = 32;
@@ -81,9 +82,9 @@ public partial class SoftBody : Node2D
 			NotifyPropertyListChanged();
 		}
 	}
-	[Export] public int MaxSubsteps = 32;
+	[Export] public int MaxSubsteps = 24;
 	
-	[Export] public int MaxCollisionResolveIterations = 5;
+	[Export] public int MaxCollisionResolveIterations = 4;
 
 	[ExportGroup("Collisions")]
 	[Export(PropertyHint.Layers2DPhysics)] public uint CollisionMask = 1;
@@ -100,6 +101,8 @@ public partial class SoftBody : Node2D
 	[Export(PropertyHint.Range, "0,1,0.01")] public float Friction = 0.02f;
 	[Export] public float RestitutionThreshold = 30f;
 	[Export] public float Restitution = 0.5f;
+	[Export] public CollisionPolygon2D CollidablePolygon2D;
+	[Export] public float PolygonPointOffset; // By how much each point should be moved more from the center.
 	
 	[ExportGroup("Joints")] 
 	[Export] public float JointRestLength = 10;
@@ -135,10 +138,6 @@ public partial class SoftBody : Node2D
 	[Export] public Vector2 Wind = Vector2.Zero;
 	// Air Density where x = relative distance from screen bottom and y = air density
 	[Export] public Curve AirDensityCurve;
-
-	[ExportGroup("Visuals")] 
-	[Export] public Polygon2D BodyPolygon;
-	[Export] public Texture2D BodyTexture;
 	
 	[ExportGroup("Debug")]
 	[Export] public bool ShowVisuals = true;
@@ -171,6 +170,9 @@ public partial class SoftBody : Node2D
 	}
 	[Export] public float ArrowDragSizeMultiplier = 1f;
 	[Export] public float MaxDebugLineLength = 50f;
+	
+	[Signal] public delegate void SoftBodyInitializedEventHandler();
+	[Signal] public delegate void StepFinishedEventHandler();
 
 	private SoftBodyApi _sbapi;
 
@@ -187,6 +189,7 @@ public partial class SoftBody : Node2D
 	private List<Action<SoftBody, float>> _oneStepSolvers = [];
 	public Point[] Points;
 	public SpringJoint[] Joints; 
+	
 	private List<SpringJoint> _jointList = [];
 	private Vector2[] _areaGradients;
 	private float _desiredArea;
@@ -198,6 +201,7 @@ public partial class SoftBody : Node2D
 
 	private Vector2[] _verts;
 	private Vector2 _centerPoint;
+	
 
 	public Vector2 CenterPoint => _centerPoint;
 	
@@ -260,13 +264,14 @@ public partial class SoftBody : Node2D
 		_desiredArea = CalculateDesiredArea ? Mathf.Abs(SignedArea(false)) : DesiredArea;
 		_screenSize = DisplayServer.ScreenGetSize();
 		AirDensityCurve.Bake();
+		EmitSignalSoftBodyInitialized();
 		GD.Print("_desiredArea: " + _desiredArea);
 	}
 	
 	private void InitPoints()
 	{
 		Points = new Point[PointCount];
-
+		
 		for (var i = 0; i < PointCount; i++)
 		{
 			float angle = Mathf.Tau / PointCount * i;
@@ -322,7 +327,7 @@ public partial class SoftBody : Node2D
 		_verts = new Vector2[n + 1]; // + 1 for center body
 		UpdateBodyVertices();
 		
-		Vector2 texSize = BodyTexture.GetSize();
+		Vector2 texSize = Texture.GetSize();
 		var uv = new Vector2[n + 1];
 		for (int i = 0; i < n; i++)
 			uv[i] = (Points[i].Position / (Radius * 2) + new Vector2(0.5f, 0.5f)) * texSize;
@@ -332,9 +337,8 @@ public partial class SoftBody : Node2D
 		for (int i = 0; i < n; i++)
 			tris.Add(new[] { n, i, (i + 1) % n });
 
-		BodyPolygon.Texture = BodyTexture;
-		BodyPolygon.UV = uv;
-		BodyPolygon.Polygons = tris;
+		UV = uv;
+		Polygons = tris;
 		// BodyPolygon.SetTextureFilter(TextureFilterEnum.Nearest);
 	}
 	
@@ -349,13 +353,21 @@ public partial class SoftBody : Node2D
 			c += Points[i].Position;
 		}
 		_centerPoint = c / n;
+		
+		CollidablePolygon2D.Polygon = _verts[..n]
+			.Select(p => p + _centerPoint.DirectionTo(p).Normalized() * PolygonPointOffset)
+			.ToArray();
+		
 		_verts[n] = _centerPoint;
 
-		BodyPolygon.Polygon = _verts;
+		Polygon = _verts;
 	}
 
 	public override void _PhysicsProcess(double delta)
 	{
+		if (Engine.IsEditorHint())
+			return;
+		
 		float h = (float)delta / Substeps;
  
 		if (UseDynamicSubsteps)
@@ -370,10 +382,13 @@ public partial class SoftBody : Node2D
 			Step(h);
 		
 		_oneStepSolvers.Clear();
+		EmitSignal(nameof(StepFinished));
 
 		QueueRedraw();
-		if (ShowVisuals != BodyPolygon.Visible)
-			BodyPolygon.Visible = ShowVisuals;
+		if (ShowVisuals && Color.A.Equals(0))
+			Color = new Color(1, 1, 1, 1);
+		else if (!ShowVisuals && Color.A.Equals(1))
+			Color = new Color(1, 1, 1, 0);
 	}
 	
 	private void Step(float h)
@@ -400,7 +415,6 @@ public partial class SoftBody : Node2D
 			p.Predicted = p.Position + p.Velocity * h;
 			p.InContact = false;
 		}
-		
 		
 		
 		foreach (var solver in _customSolvers)
@@ -763,7 +777,7 @@ public partial class SoftBody : Node2D
 	{
 		if (DrawPoints || DrawVelocity || DrawDrag)
 		{
-			var n = Points.Length;
+			var n = Points?.Length ?? 0;
 			for (int i = 0; i < n; i++)
 			{
 				var p = Points[i];
