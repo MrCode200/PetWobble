@@ -16,6 +16,10 @@ Have you ever dreamt of having a pet.
 Not just any Pet..., A squishy, wobbly & cute PET!
 Then you are right here. Wobble is YOUR 🫵 Pet.
 Download him and watch him make your life better, in any possible way imaginable... (~not really still much in work and progress xd~)
+
+> [!NOTE]
+> On the latest releases the Jump/Idle have been disabled, 
+> the really amazing & satisfying softbody Physics ;b are enabled though (with dragging and mouse interactions).
 ## 💡 Features
 > NOW:
 > 1. Jump (boing boing 🐸)
@@ -37,6 +41,8 @@ Wobble isn't just a new creature from another dimension. He is a old creature ri
 
 ## ▶️ HOW TO PLAY
 Go to releases and download the latest, then you can run the exe when you have exported ALL files in the zip. Have fun :))
+
+If you want to build it yourself, donwload the latest limboai godot build which supports dotnet :))
 
 ## ⚠️ WARNINGS
 - I could sadly only figure out windows release right now, as soon as i figure out the others i will publish them too, sry mac fans
