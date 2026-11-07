@@ -7,9 +7,6 @@ using Environment = System.Environment;
 
 namespace PetWobble.SoftBody.Extensions;
 
-// TODO:
-// make windows native so that other objects can be seen,
-// as MousePassthrough makes only area inside polygon visible
 public partial class ClickThroughWindow : Node2D
 {
 	[Export] public Area2D[] ClickableAreas;

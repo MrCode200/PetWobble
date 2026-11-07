@@ -3,7 +3,6 @@ using Godot;
 
 namespace PetWobble.SoftBody.Extensions;
  
-// TODO: make it soft follow/ Drag variable add to it
 public partial class MouseSoftBodyPusher : Node2D
 {
 	[Export] public SoftBody SoftBody;
