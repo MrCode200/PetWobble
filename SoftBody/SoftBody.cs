@@ -20,8 +20,12 @@ public sealed class Point
 	public Vector2 PreSolveVelocity;  // velocity before constraints/collision (impact speed) / starting velocity 
 	public Vector2 ContactNormal;
 	public bool InContact;
+	
+	// DEBUG DRAW VAR
+	public bool InContactThisFrame;
+	public Vector2 CollisionImpulse;
+	public Vector2 SelfCollisionImpulse;
 
-	// TODO: make get setter? (make predicted and velocity change protected while frozen?) auto set vel to 0?
 	private bool _frozen;
 	public bool Frozen
 	{
@@ -38,15 +42,24 @@ public sealed class Point
 	}	
 	public float DistanceTo(Point point) => (point.Position - Position).Length();
 
+	public Vector2 Displacement => Predicted - Position;
+
 	public override string ToString() => $"Point(Position: {Position}, Velocity: {Velocity})";
 }
 
-public readonly record struct SpringJoint
+public record struct SpringJoint
 {
 	public Point PointA { get; init; }
 	public Point PointB { get; init; }
 	public float RestLength { get; init; }
 	public float Stiffness { get; init; }
+
+	public Vector2 Direction => (PointB.Position - PointA.Position);
+
+	public Vector2 Normal =>
+		new (-(PointB.Position.Y - PointA.Position.Y), PointB.Position.X - PointA.Position.X);
+	public float Lenght => Direction.Length();
+	public bool CollidedThisFrame { get; set; }
 }
 
 [Tool]
@@ -83,18 +96,18 @@ public partial class SoftBody : Polygon2D
 		}
 	}
 	[Export] public int MaxSubsteps = 24;
-	
 	[Export] public int MaxCollisionResolveIterations = 4;
 
-	[ExportGroup("Collisions")]
+	[ExportGroup("Collisions")] 
+	[Export] public bool DisableSelfCollision = true;
 	[Export(PropertyHint.Layers2DPhysics)] public uint CollisionMask = 1;
-	private bool _killInwardNormalVelocityUponCollision = true;
-	[Export] public bool KillInwardNormalVelocityUponCollision
+	private bool _useRestitution = true;
+	[Export] public bool UseRestitution
 	{
-		get => _killInwardNormalVelocityUponCollision;
+		get => _useRestitution;
 		set
 		{
-			_killInwardNormalVelocityUponCollision = value;
+			_useRestitution = value;
 			NotifyPropertyListChanged();
 		}
 	}
@@ -143,7 +156,21 @@ public partial class SoftBody : Polygon2D
 	[Export] public bool ShowVisuals = true;
 	[Export] public bool DrawPoints = true;
 	[Export] public bool DrawCenterPoint = true;
-	[Export] public bool DrawJoints = true;
+	
+	private bool _drawJoints = true;
+	[Export] public bool DrawJoints
+	{
+		get => _drawJoints;
+		set
+		{
+			_drawJoints = value;
+			NotifyPropertyListChanged();
+		}
+	}
+	[Export] public bool ShowCollidedJoints = true;
+	[Export] public bool DrawCollisionImpulses = true;
+	[Export] public bool DrawSelfCollisionImpulses = true;
+	[Export] public float SelfCollisionArrowSizeMultiplier = 1;
 	[Export] public float LineWidths = -1f;
 	private bool _drawVelocity = true;
 	[Export] public bool DrawVelocity
@@ -188,7 +215,8 @@ public partial class SoftBody : Polygon2D
 	private List<Action<SoftBody, float>> _customSolvers = [];
 	private List<Action<SoftBody, float>> _oneStepSolvers = [];
 	public Point[] Points;
-	public SpringJoint[] Joints; 
+	public SpringJoint[] Joints;
+	public int SubstepsRemaining;
 	
 	private List<SpringJoint> _jointList = [];
 	private Vector2[] _areaGradients;
@@ -220,7 +248,7 @@ public partial class SoftBody : Polygon2D
 				break;
 			case nameof(RestitutionThreshold):
 			case nameof(Restitution):
-				if (KillInwardNormalVelocityUponCollision) show = false;
+				if (!UseRestitution) show = false;
 				break;
 		}
         
@@ -232,8 +260,6 @@ public partial class SoftBody : Polygon2D
         
 		var (disable, hint) = propertyName switch
 		{
-			nameof(Friction) => (KillInwardNormalVelocityUponCollision,
-				"Disabled when KillInwardNormalVelocityUponCollision is true."),
 			nameof(JointRestLength) => (UseSpawnDistanceAsRestLength,
 				"Disabled when UseSpawnDistanceAsRestLength is true."),
 			nameof(RearDragMultiplier) => (AirDrag == 0f,
@@ -242,6 +268,8 @@ public partial class SoftBody : Polygon2D
 				"Disabled when DrawVelocity is false."),
 			nameof(ArrowDragSizeMultiplier) => (!DrawDrag,
 				"Disabled when DrawDrag is false."),
+			nameof(ShowCollidedJoints) => (!DrawJoints,
+					"Disabled when DrawJoints is false."),
 			_ => (false, "")
 		};
 
@@ -367,19 +395,35 @@ public partial class SoftBody : Polygon2D
 	{
 		if (Engine.IsEditorHint())
 			return;
+		 
+		// Debug per Draw Call Resets
+		foreach (var p in Points)
+		{
+			p.InContactThisFrame = false;
+			p.CollisionImpulse = Vector2.Zero;
+			p.SelfCollisionImpulse = Vector2.Zero;
+		}
+
+		for (int k = 0; k < Joints.Length; k++)
+		{
+			Joints[k].CollidedThisFrame = false;
+		}
 		
-		float h = (float)delta / Substeps;
- 
 		if (UseDynamicSubsteps)
 		{
 			var topSpeed = Points.Max(p => p.Velocity.Length());
 			var maxRelDisplacement = topSpeed * 2 * (float)delta;
 			var dynamicStep = (int)MathF.Ceiling(maxRelDisplacement / PointRadius);
-			Substeps = Math.Max(MaxSubsteps, dynamicStep);
+			Substeps = Math.Clamp(dynamicStep, 1, MaxSubsteps);
 		}
-		
-		for (int s = 0; s < Substeps; s++)
+		float h = (float)delta / Substeps;
+
+		for (SubstepsRemaining = Substeps;
+		     SubstepsRemaining > 0; 
+		     SubstepsRemaining--)
+		{
 			Step(h);
+		}
 		
 		_oneStepSolvers.Clear();
 		EmitSignal(nameof(StepFinished));
@@ -402,21 +446,25 @@ public partial class SoftBody : Polygon2D
 			if (p.Frozen)
 			{
 				p.Predicted = p.Position;
-				p.Velocity = Vector2.Zero;
 				p.InContact = false;
 				continue;
 			}
 			
 			p.Velocity += Gravity * h;
 			p.Velocity *= damp;
-			ApplyAirDrag(h);
-			
+		}
+		
+		ApplyAirDrag(h);
+
+		foreach (var p in Points)
+		{
+			if (p.Frozen) continue;
 			p.PreSolveVelocity = p.Velocity;
 			p.Predicted = p.Position + p.Velocity * h;
 			p.InContact = false;
 		}
 		
-		
+		// 2.A Custom Solvers
 		foreach (var solver in _customSolvers)
 		{
 			solver(this, h);
@@ -427,13 +475,15 @@ public partial class SoftBody : Polygon2D
 			solver(this, h);
 		}
 		
-		// 2. Soft constraints
+		// 2.B Soft constraints
 		SolveJoints(_reverseIterStep);
 		SolveArea();
 		
 		// 3. Hard Constraint: Solve Collision
-		// SolveSelfCollisions(_reverseIterStep);
+		if (!DisableSelfCollision)
+			SolveSelfCollisions(_reverseIterStep);
 		SolveEnvironmentCollisions(_reverseIterStep);
+		
 		
 		// 4. Updated Velocity from position
 		UpdateVelocities(h);
@@ -620,28 +670,90 @@ public partial class SoftBody : Polygon2D
 
 	private void SolveSelfCollisions(bool reverse = false)
 	{
+		// TODO: for more efficient collision checks implement a collision map (cell map)
 		var n = Points.Length;
-		for (int i = 0; i < n; n++)
+		for (int i = 0; i < n; i++)
 		{
+			var p = Points[reverse ? n - i - 1 : i];
+
+			bool isAntiBentJoint = true; // Using this we check collision only with the outer layer
 			
+			for (int k = 0; k < Joints.Length; k++)
+			{
+				var j = Joints[k];
+				isAntiBentJoint = !isAntiBentJoint;
+				if (isAntiBentJoint || p == j.PointA || p == j.PointB)
+					continue; // Ignore collision with its own joints
+
+				if (!SegmentsIntersect(
+					    p.Position, p.Predicted,
+					    j.PointA.Predicted, j.PointB.Predicted,
+					    out var intersectCoords,
+					    out var collisionNormalB
+					    ))
+					continue;
+
+				var remaining = p.Predicted - intersectCoords;
+				//var slide = remaining - collisionNormalB * collisionNormalB.Dot(remaining);
+
+				if (DrawCollisionImpulses)
+					p.SelfCollisionImpulse += remaining.Length() * collisionNormalB;
+				if (ShowCollidedJoints)
+					j.CollidedThisFrame = true;
+				
+				p.Predicted = intersectCoords + (collisionNormalB * PointRadius);
+				j.PointA.Predicted -= (collisionNormalB * PointRadius / 2) * remaining.Length();
+				j.PointB.Predicted -= (collisionNormalB * PointRadius / 2) * remaining.Length();
+				//GD.Print($"Intersect Found: {p}");
+			}
 		}
+	}
+
+	
+	public static bool SegmentsIntersect(
+		Vector2 aStart, Vector2 aEnd,
+		Vector2 bStart, Vector2 bEnd,
+		out Vector2 intersectCoords,
+		out Vector2 collisionNormalB)
+	{
+		var segA = (aEnd - aStart);
+		var segB = bEnd - bStart;
+		var segA1B1 = (bStart - aStart);
+		// The sign of the cross product changes if the b vector is on the other side
+		// Thats why we/I can check using the cross product if there ws an intersection
+		
+		// To determine if the cross happened in the joint lenght
+		// We check the relative area between the points, if they are under 0 or above 1 then 
+		// the vectors have crossed outside the joint lenght ;))
+		
+		// denom is the bottom num of a division; here symoblizes total area
+		var denom = segA.Cross(segB);
+		if (Mathf.Abs(denom) < 0.00001f)
+		{
+			intersectCoords = Vector2.Zero;
+			collisionNormalB = Vector2.Zero;
+			return false; // Is this correct? if here is collinear then area 0 but actually still intersecting
+		}
+		
+		var overlapSegA = segA1B1.Cross(segB) / denom;
+		var overlapSegB = segA1B1.Cross(segA) / denom;
+		
+		intersectCoords = aStart + segA * overlapSegA;
+		collisionNormalB = new Vector2(-segB.Y, segB.X).Normalized();
+		if (segA.Dot(collisionNormalB) > 0)
+			collisionNormalB = -collisionNormalB;
+		
+		return overlapSegA is >= 0 and <= 1 && 
+		       overlapSegB is >= 0 and <= 1;
+		// intersect
 	}
 	
 	private void SolveEnvironmentCollisions(bool reverse = false)
 	{
-		// TODO:
-		// You cast from p.Position to p.Predicted,
-		// which handles tunneling better than checking only the predicted point.
-		// But after moving p.Predicted, you cast again from the same p.Position.
-		// That is intentional for repeated resolution, but it can repeatedly detect the same wall.
-		// It works, though a short segment/sweep or shape cast would be more robust.
-			
 		var count = Points.Length;
 		for (int k = 0; k < count; k++)
 		{
 			var p = Points[reverse ? count - k - 1 : k]; 
-			if (p.Frozen)
-				continue;
 			
 			for (int i = 0; i < MaxCollisionResolveIterations; i++)
 			{
@@ -659,6 +771,7 @@ public partial class SoftBody : Polygon2D
 				p.Predicted = hitPos + normal * PointRadius + slide;
 				p.ContactNormal = normal;
 				p.InContact = true;
+				p.InContactThisFrame = true;
 			}
 		}
 	}
@@ -667,25 +780,16 @@ public partial class SoftBody : Polygon2D
 	{
 		foreach (var p in Points)
 		{
-			if (p.Frozen)
-				continue;
-			
 			Vector2 v = (p.Predicted - p.Position) / h;
 
-			if (p.InContact && KillInwardNormalVelocityUponCollision)
+			if (p.Frozen)
 			{
-				Vector2 n = p.ContactNormal;
-
-				float vn = v.Dot(n);
-				if (vn < 0f)
-					v -= n * vn;
-
-				Vector2 vt = v - n * v.Dot(n);
-				// MathF.Pow(target, power), where after Substeps, Friction reaches target
-				var substepFriction = MathF.Pow(1f - Friction, h / Substeps); 
-				v = vt * (1f - substepFriction);
-			}
-			else if (p.InContact)
+				p.Velocity = v.LimitLength(MaxSpeed);
+				p.Position = p.Predicted;
+				continue;
+			}			
+			
+			if (p.InContact && UseRestitution)
 			{
 				Vector2 n = p.ContactNormal;
 				// vnImpact < 0, means velocity and normal (which is perpendicular to the wall) are pointing in opposite directions
@@ -697,14 +801,31 @@ public partial class SoftBody : Polygon2D
 				float newVn = Mathf.Max(vn, 0f); // Removes the velocity that is pointing into the wall
 				if (vnImpact < -RestitutionThreshold)
 					newVn = Mathf.Max(vn, -vnImpact * Restitution);
+
+				if (DrawCollisionImpulses)
+					p.CollisionImpulse += n * (newVn - vn);
 				
 				v = vt + n * newVn;
 			}
+			else if (p.InContact)
+			{
+				Vector2 n = p.ContactNormal;
+				
+				float vn = v.Dot(n);
+				if (vn < 0f)
+				{
+					if (DrawCollisionImpulses)
+						p.CollisionImpulse += n * -vn;
+					v -= n * vn;
+				}
+				
+				Vector2 vt = v - n * v.Dot(n);
+				// MathF.Pow(target, power), where after Substeps, Friction reaches target
+				var substepFriction = MathF.Pow(1f - Friction, h);
+				v = vt * (1f - substepFriction);
+			}
 
-			if (v.Length() > MaxSpeed)
-				v = v.Normalized() * MaxSpeed;
-
-			p.Velocity = v;
+			p.Velocity = v.LimitLength(MaxSpeed);
 			p.Position = p.Predicted;
 		}
 	}
@@ -775,7 +896,7 @@ public partial class SoftBody : Polygon2D
 
 	public override void _Draw()
 	{
-		if (DrawPoints || DrawVelocity || DrawDrag)
+		if (DrawPoints || DrawVelocity || DrawDrag || DrawCollisionImpulses || DrawSelfCollisionImpulses)
 		{
 			var n = Points?.Length ?? 0;
 			for (int i = 0; i < n; i++)
@@ -784,7 +905,7 @@ public partial class SoftBody : Polygon2D
 
 				if (DrawPoints)
 				{
-					var pColor = p.InContact
+					var pColor = p.InContactThisFrame
 						? new Color(0.8f, 0.0f, 0f)
 						: new Color(0.5f, 0.5f, 0.7f);
 
@@ -847,9 +968,6 @@ public partial class SoftBody : Polygon2D
 					float raw = dragCoeff * segLen * Mathf.Abs(vn) * h; // before clamping
 					float factor = Mathf.Min(1f, raw) * ArrowDragSizeMultiplier; // 0..1, what is actually applied
 
-					// Direction of the drag force: opposes the relative normal velocity
-					Vector2 dir = -normal * Mathf.Sign(vn);
-
 					// Length: 0..MaxDebugLineLength, proportional to the applied fraction
 					// Color: green (weak) -> red (strong)
 					Color col = new Color(0.3f, 0.8f, 0.3f).Lerp(new Color(0.9f, 0.15f, 0.1f), factor);
@@ -862,6 +980,16 @@ public partial class SoftBody : Polygon2D
 					// Marker where the clamp kicked in: drag is stronger than what is applied
 					if (raw * ArrowDragSizeMultiplier > 1f)
 						DrawCircle(tip, 2f, Colors.White);
+				}
+
+				if (DrawCollisionImpulses)
+				{
+					DrawImpulseArrow(p, p.CollisionImpulse, 1);
+				}
+
+				if (DrawSelfCollisionImpulses)
+				{
+					DrawImpulseArrow(p, p.SelfCollisionImpulse, SelfCollisionArrowSizeMultiplier);
 				}
 			}
 		}
@@ -888,11 +1016,11 @@ public partial class SoftBody : Polygon2D
 				var normalizedJoint = jointLength > MaxDebugLineLength 
 					? jointVec.Normalized() * MaxDebugLineLength 
 					: jointVec;
-			
+				
 				DrawLine(
 					j.PointA.Position,
 					j.PointA.Position + normalizedJoint, jColor,
-					LineWidths
+					(ShowCollidedJoints && j.CollidedThisFrame) ? LineWidths * 100f : LineWidths
 				);
 			}
 		}
@@ -901,6 +1029,25 @@ public partial class SoftBody : Polygon2D
 		{
 			DrawCircle(CenterPoint, 4f, new Color(1f, 0.5f, 0.5f));
 		}
+	}
+
+	private void DrawImpulseArrow(Point p, Vector2 impulse, float arrowSizeMultiplier)
+	{
+		if (impulse == Vector2.Zero)
+			return;
+					
+		var factor = Mathf.Min(1f, impulse.Length()) * arrowSizeMultiplier;
+		Color clr = new Color(0.3f, 0.8f, 0.3f).Lerp(new Color(0.9f, 0.15f, 0.1f), factor);
+
+		if (impulse.Length() > MaxDebugLineLength)
+		{
+			impulse = p.CollisionImpulse.Normalized() * MaxDebugLineLength;
+			DrawCircle(p.Position + impulse, 2f, Colors.White);
+		}					
+					
+		DrawArrow(p.Position, p.Position + impulse,
+			clr,
+			LineWidths);
 	}
 	
 	private void DrawArrow(Vector2 from, Vector2 to, Color color, float width,

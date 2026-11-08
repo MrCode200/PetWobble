@@ -14,8 +14,6 @@ public partial class MouseSoftBodyDragger : Node2D
     [Export] public int ClosestPointCount = 1;
     [Export] public float UnfreezeDelay = 0.1f;
     
-    
-    
     [ExportGroup("Debug")] 
     [Export] public bool DrawShape = true;
     
@@ -31,13 +29,14 @@ public partial class MouseSoftBodyDragger : Node2D
     {
         MIH.DragStarted += OnDragStarted;
         MIH.DragEnded += OnDragEnded;
+        SB.AddCustomSolver(Solve);
     }
 
     public override void _ExitTree()
     {
         MIH.DragStarted -= OnDragStarted;
         MIH.DragEnded -= OnDragEnded;
-        SB.AddCustomSolver(Solve);
+        SB.RemoveCustomSolver(Solve);
     }
 
     private void OnDragStarted(InputEvent @event, Vector2 currentPos, Vector2 pressPos)
@@ -103,11 +102,6 @@ public partial class MouseSoftBodyDragger : Node2D
 
         }        
         QueueRedraw();
-
-        if (!_isDraggingSB)
-            return;
-        
-        Solve(SB, (float)delta);
     }
 
     private void UnfreezePoints()
@@ -129,7 +123,6 @@ public partial class MouseSoftBodyDragger : Node2D
         {
             var p = _overlappingPoints[i];
             Vector2 target = sb.ToLocal(_shapeCenter + _grabOffsets[i]);
-            p.Position = target;
             p.Predicted = target;   // keeps joint/area solvers in sync
         }
     }

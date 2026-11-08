@@ -151,7 +151,6 @@ public partial class ClickThroughWindow : Node2D
 
 			if (ClickableAreas.Any(area => collider == area))
 			{
-				GD.Print("Mouse over Clickable Area");
 				return true;
 			}
 		}
@@ -164,8 +163,8 @@ public partial class ClickThroughWindow : Node2D
 		if (_passthrough == passthrough)
 			return;
 		
-		GD.Print($"Passthrough toggled: {passthrough}");
 		_passthrough = passthrough;
+		GD.Print($"Passthrough toggle: {_passthrough}");
 		
 		Marshal.SetLastPInvokeError(0);
 		long style = _is64Bit 
