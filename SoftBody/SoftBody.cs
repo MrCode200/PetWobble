@@ -154,8 +154,20 @@ public partial class SoftBody : Polygon2D
 	
 	[ExportGroup("Debug")]
 	[Export] public bool ShowVisuals = true;
-	[Export] public bool DrawPoints = true;
-	[Export] public bool DrawCenterPoint = true;
+
+	private bool _drawCollidables = false;
+	[Export]
+	public bool DrawCollidables
+	{
+		get => _drawCollidables;
+		set
+		{
+			_drawCollidables = value;
+			GetTree().DebugCollisionsHint = value;
+		}
+	}
+	[Export] public bool DrawPoints = false;
+	[Export] public bool DrawCenterPoint = false;
 	
 	private bool _drawJoints = true;
 	[Export] public bool DrawJoints
@@ -172,7 +184,7 @@ public partial class SoftBody : Polygon2D
 	[Export] public bool DrawSelfCollisionImpulses = true;
 	[Export] public float SelfCollisionArrowSizeMultiplier = 1;
 	[Export] public float LineWidths = -1f;
-	private bool _drawVelocity = true;
+	private bool _drawVelocity = false;
 	[Export] public bool DrawVelocity
 	{
 		get => _drawVelocity;
@@ -285,16 +297,31 @@ public partial class SoftBody : Polygon2D
 		if (Engine.IsEditorHint())
 			return;
 		
+		_screenSize = DisplayServer.ScreenGetSize();
+		AirDensityCurve.Bake();
+		Initialize();
+	}
+	
+	private void Initialize()
+	{
+		_jointList.Clear(); // InitJoints appends to this list, so it must be reset on rebuild
 		InitPoints();
 		InitJoints();
 		InitBody();
 		_areaGradients = new Vector2[Points.Length];
-		_desiredArea = CalculateDesiredArea ? Mathf.Abs(SignedArea(false)) : DesiredArea;
-		_screenSize = DisplayServer.ScreenGetSize();
-		AirDensityCurve.Bake();
-		EmitSignalSoftBodyInitialized();
-		GD.Print("_desiredArea: " + _desiredArea);
+		UpdateDesiredArea();
+		EmitSignalSoftBodyInitialized(); // lets the dragger etc. drop references to the old points
 	}
+	
+	private void UpdateDesiredArea()
+	{
+		int n = Points.Length;
+		// Area of the regular n-gon the blob spawns as
+		_desiredArea = CalculateDesiredArea
+			? 0.5f * n * Radius * Radius * MathF.Sin(Mathf.Tau / n)
+			: DesiredArea;
+	}
+
 	
 	private void InitPoints()
 	{
@@ -312,7 +339,7 @@ public partial class SoftBody : Polygon2D
 				Predicted = direction * Radius,
 				Velocity = Vector2.Zero
 			};
-			GD.Print(Points[i]);
+			//GD.Print(Points[i]);
 		}
 	}
 
@@ -339,7 +366,7 @@ public partial class SoftBody : Polygon2D
 		}
 		
 		Joints = _jointList.ToArray();
-		GD.Print(Joints);
+		//GD.Print(Joints);
 	}
 	
 	private void AddJoint(Point a, Point b, float stiffness, float? rest = null) 
@@ -355,19 +382,31 @@ public partial class SoftBody : Polygon2D
 		_verts = new Vector2[n + 1]; // + 1 for center body
 		UpdateBodyVertices();
 		
-		Vector2 texSize = Texture.GetSize();
-		var uv = new Vector2[n + 1];
-		for (int i = 0; i < n; i++)
-			uv[i] = (Points[i].Position / (Radius * 2) + new Vector2(0.5f, 0.5f)) * texSize;
-		uv[n] = 0.5f * texSize;
+		RebuildUv();
 
 		var tris = new Godot.Collections.Array();
 		for (int i = 0; i < n; i++)
 			tris.Add(new[] { n, i, (i + 1) % n });
 
-		UV = uv;
 		Polygons = tris;
 		// BodyPolygon.SetTextureFilter(TextureFilterEnum.Nearest);
+	}
+
+	private void RebuildUv()
+	{
+		if (Points == null || Texture == null) return; // Initialize() will do it later
+
+		int n = Points.Length;
+		Vector2 texSize = Texture.GetSize();
+		var uv = new Vector2[n + 1];
+		for (int i = 0; i < n; i++)
+		{
+			float angle = Mathf.Tau / n * i;
+			var dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+			uv[i] = (dir * 0.5f + new Vector2(0.5f, 0.5f)) * texSize;
+		}
+		uv[n] = 0.5f * texSize;
+		UV = uv;
 	}
 	
 	private void UpdateBodyVertices()
@@ -910,6 +949,7 @@ public partial class SoftBody : Polygon2D
 						: new Color(0.5f, 0.5f, 0.7f);
 
 					if (!p.Frozen)
+						
 						DrawCircle(
 							p.Position,
 							4.0f,

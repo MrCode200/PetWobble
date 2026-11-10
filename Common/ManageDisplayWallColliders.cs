@@ -1,9 +1,10 @@
 ﻿using System.Net.Mime;
 using Godot;
+using PetWobble.Config;
 
 namespace PetWobble.Const.Common;
 
-public partial class ManageDisplayWallColliders : Node2D
+public partial class ManageDisplayWallColliders : Node2D, IConfigurable
 {
     [Export] public float WallThickness = 20f;
     [Export] public StaticBody2D Up;
@@ -13,7 +14,15 @@ public partial class ManageDisplayWallColliders : Node2D
     
     private Vector2 _screenSize;
     
+    public string ConfigTitle => "Walls";
+    public void OnConfigChanged(string p) { if (p == nameof(WallThickness)) RebuildWalls(); }
+    
     public override void _Ready()
+    {
+        RebuildWalls();
+    }
+
+    private void RebuildWalls()
     {
         _screenSize = DisplayServer.ScreenGetSize();
         Down.Position = new Vector2(_screenSize.X / 2, 0);

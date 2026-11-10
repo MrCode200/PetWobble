@@ -13,8 +13,6 @@ public enum ForceType
 
 public class SoftBodyApi(SoftBody softBody)
 {
-	private float _pointPerAngleStep = MathF.Tau / softBody.PointCount;
-
 	// Getters
 	public Point[] GetPointsInsideShape(Vector2 shapeCenterPosition, Shape2D shape)
 	{
@@ -30,18 +28,44 @@ public class SoftBodyApi(SoftBody softBody)
 
 	public Point[] GetPointsAtRadians(
 		float angleRadian,
-		// int kNeighbours = 0,
-		// bool globalDegree = false,
+		int kNeighbours = 0,
+		bool globalDirections = false,
 		bool returnClosest = true
 	)
 	{
-		if (!returnClosest && angleRadian % _pointPerAngleStep > 0)
+		var pointPerAngleStep = MathF.Tau / softBody.PointCount;
+
+		angleRadian = ((angleRadian % MathF.Tau) + MathF.Tau) % MathF.Tau;
+		
+		if (!returnClosest && angleRadian % pointPerAngleStep > 0)
 			return [];
 		
-		// Rotated by 90 degrees such that 0 is upwards
-		int i = (int)MathF.Round(angleRadian / _pointPerAngleStep);
+		// Calc to global direction the radian, to get the correct points
+		if (globalDirections)
+			angleRadian += GetGlobalLocalAngleOffset();
 		
-		return [softBody.Points[i]];
+		
+		HashSet<Point> points = [];
+		int i = (int)MathF.Round(angleRadian / pointPerAngleStep) % softBody.PointCount;
+		
+		points.Add(softBody.Points[i]);
+		
+		for (int k = 1; k <= kNeighbours; k++)
+		{
+			points.Add(softBody.Points[(i + k) % softBody.PointCount]);
+			points.Add(softBody.Points[(i - k + softBody.PointCount) % softBody.PointCount]);
+		}
+		
+		return [.. points];
+	}
+
+	public float GetGlobalLocalAngleOffset()
+	{
+		var localRight = softBody.CenterPoint
+			.DirectionTo(softBody.Points[0].Position)
+			.Normalized();
+		
+		return localRight.AngleTo(Vector2.Right);
 	}
 	
 	// Checkers

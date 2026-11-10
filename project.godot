@@ -23,6 +23,7 @@ window/size/viewport_height=400
 window/size/borderless=true
 window/size/always_on_top=true
 window/size/transparent=true
+window/subwindows/embed_subwindows=false
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/per_pixel_transparency/allowed=true
@@ -33,7 +34,7 @@ project/assembly_name="PetWobble"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_super-wakatime/plugin.cfg", "res://addons/softbody2d/plugin.cfg")
+enabled=PackedStringArray("res://addons/TweenComponent/plugin.cfg", "res://addons/godot_super-wakatime/plugin.cfg", "res://addons/softbody2d/plugin.cfg")
 
 [physics]
 

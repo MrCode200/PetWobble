@@ -1,8 +1,8 @@
-[gd_resource type="BehaviorTree" format=3 uid="uid://dtpwtvcotk2tr"]
+[gd_resource type="BehaviorTree" format=3 uid="uid://dale3kjm14lld"]
 
-[ext_resource type="Script" uid="uid://ee36s87p1a76" path="res://ai/tasks/IsDragging.cs" id="1_2xfxq"]
-[ext_resource type="Script" uid="uid://b56pfaf32ubqm" path="res://ai/tasks/SlimeJumpAction.cs" id="1_u6asx"]
-[ext_resource type="Script" uid="uid://b4e77ho0mlmit" path="res://ai/tasks/WindowFollowCursor.cs" id="2_00os5"]
+[ext_resource type="Script" uid="uid://b61htvfptxfhb" path="res://ai/tasks/IsDragging.cs" id="1_2xfxq"]
+[ext_resource type="Script" uid="uid://bmghe60jvcq1r" path="res://ai/tasks/WobbleJumpAction.cs" id="2_00os5"]
+[ext_resource type="Script" uid="uid://sn3hihtirvoe" path="res://ai/tasks/IsColliding.cs" id="2_tk5wh"]
 
 [sub_resource type="BlackboardPlan" id="BlackboardPlan_mk1ew"]
 var/IsDragging/name = &"IsDragging"
@@ -11,77 +11,90 @@ var/IsDragging/value = false
 var/IsDragging/hint = 0
 var/IsDragging/hint_string = ""
 
-[sub_resource type="BTCondition" id="BTCondition_00os5"]
+[sub_resource type="BTCondition" id="BTCondition_2xfxq"]
 script = ExtResource("1_2xfxq")
-ColliderPath = NodePath("Area2D")
+MouseSBDraggerPath = NodePath("Systems/MouseDragger")
 
-[sub_resource type="BBVariant" id="BBVariant_s2vrk"]
-resource_name = "idle"
-saved_value = &"idle"
-type = 21
+[sub_resource type="BTRandomWait" id="BTRandomWait_tk5wh"]
+min_duration = 2.0
+max_duration = 3.0
 
-[sub_resource type="BBNode" id="BBNode_pm1us"]
-resource_name = "AnimatedSprite2D"
-saved_value = NodePath("AnimatedSprite2D")
+[sub_resource type="BTSequence" id="BTSequence_c6q2p"]
+custom_name = "Sequence IsDragging"
+children = [SubResource("BTCondition_2xfxq"), SubResource("BTRandomWait_tk5wh")]
 
-[sub_resource type="BTCallMethod" id="BTCallMethod_d7hiu"]
-node = SubResource("BBNode_pm1us")
-method = &"play"
-args = Array[BBVariant]([SubResource("BBVariant_s2vrk")])
+[sub_resource type="BTRandomWait" id="BTRandomWait_00os5"]
+max_duration = 4.0
 
-[sub_resource type="BTAction" id="BTAction_tk5wh"]
-script = ExtResource("2_00os5")
-NodeToOverlap = NodePath(".")
-Offset = Vector2(-3, -17)
-
-[sub_resource type="BTSequence" id="BTSequence_d7hiu"]
-custom_name = "Sequence Dragging"
-children = [SubResource("BTCondition_00os5"), SubResource("BTCallMethod_d7hiu"), SubResource("BTAction_tk5wh")]
-
-[sub_resource type="BBVariant" id="BBVariant_pm1us"]
-resource_name = "idle"
-saved_value = &"idle"
-type = 21
-
-[sub_resource type="BBNode" id="BBNode_d7hiu"]
-resource_name = "AnimatedSprite2D"
-saved_value = NodePath("AnimatedSprite2D")
-
-[sub_resource type="BTCallMethod" id="BTCallMethod_3ouvy"]
-node = SubResource("BBNode_d7hiu")
-method = &"play"
-args = Array[BBVariant]([SubResource("BBVariant_pm1us")])
-
-[sub_resource type="BTRandomWait" id="BTRandomWait_6bko2"]
-min_duration = 0.5
-
-[sub_resource type="BTSequence" id="BTSequence_2netc"]
+[sub_resource type="BTSequence" id="BTSequence_tk5wh"]
 custom_name = "Sequence Idle"
-children = [SubResource("BTCallMethod_3ouvy"), SubResource("BTRandomWait_6bko2")]
+children = [SubResource("BTRandomWait_00os5")]
 metadata/_weight_ = 1.0
 
-[sub_resource type="BTAction" id="BTAction_pm1us"]
-script = ExtResource("1_u6asx")
-AnimatedSpritePath = NodePath("AnimatedSprite2D")
-MaxDirectionChangePerTick = 0.65
+[sub_resource type="BTCondition" id="BTCondition_ms36n"]
+script = ExtResource("2_tk5wh")
+SoftBodyPath = NodePath("SoftBody")
 
-[sub_resource type="BTProbability" id="BTProbability_pm1us"]
-children = [SubResource("BTAction_pm1us")]
-run_chance = 0.768
+[sub_resource type="BTProbability" id="BTProbability_tk5wh"]
+run_chance = 0.991
 
-[sub_resource type="BTRepeatUntilFailure" id="BTRepeatUntilFailure_w1cy5"]
+[sub_resource type="BTRepeatUntilFailure" id="BTRepeatUntilFailure_ms36n"]
 custom_name = "RepeatUntilFailure Jump"
-children = [SubResource("BTProbability_pm1us")]
+children = [SubResource("BTProbability_tk5wh")]
 
-[sub_resource type="BTSequence" id="BTSequence_pw66u"]
+[sub_resource type="BTTimeLimit" id="BTTimeLimit_00os5"]
+children = [SubResource("BTRepeatUntilFailure_ms36n")]
+_enabled = false
+time_limit = 1.0
+
+[sub_resource type="Curve" id="Curve_i7riy"]
+_data = [Vector2(0, 0.70786524), 0.0, 0.0, 0, 0, Vector2(0.15957448, 1), 0.0, 0.0, 0, 0, Vector2(0.606383, 0.32584274), -1.3378276, -1.3378276, 0, 0, Vector2(0.9521277, 0), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="Curve" id="Curve_455lh"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.4414894, 0.3370787), 3.446481, 3.446481, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Curve" id="Curve_00os5"]
+_limits = [-1.0, 1.0, 0.0, 1.0]
+_data = [Vector2(0, -0.056179762), 0.0, 0.0, 0, 0, Vector2(0.2393617, -0.25842702), 4.224719, 4.224719, 0, 0, Vector2(0.4680851, 0.8876404), 1.0561796, 1.0561796, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="BTAction" id="BTAction_00os5"]
+script = ExtResource("2_00os5")
+Force = 50.0
+NNeighboursApplyForce = 5
+YForceMultiplier = SubResource("Curve_00os5")
+Decay = SubResource("Curve_i7riy")
+MinDuration = 0.6
+MaxDuration = 0.85
+MaxRadianChangePerCall = 1.5
+RadianRange = Vector2(4.052, 5.372)
+DirectionChange = SubResource("Curve_455lh")
+SoftBodyPath = NodePath("SoftBody")
+
+[sub_resource type="BTCondition" id="BTCondition_00os5"]
+script = ExtResource("2_tk5wh")
+SoftBodyPath = NodePath("SoftBody")
+
+[sub_resource type="BTRepeatUntilSuccess" id="BTRepeatUntilSuccess_tk5wh"]
+custom_name = "RepeatUntilFailure Jump"
+children = [SubResource("BTCondition_00os5")]
+
+[sub_resource type="BTRandomWait" id="BTRandomWait_ms36n"]
+min_duration = 2.0
+max_duration = 5.0
+
+[sub_resource type="BTSequence" id="BTSequence_qkcup"]
 custom_name = "Sequence Moving"
-children = [SubResource("BTRepeatUntilFailure_w1cy5")]
+children = [SubResource("BTCondition_ms36n"), SubResource("BTTimeLimit_00os5"), SubResource("BTAction_00os5"), SubResource("BTRepeatUntilSuccess_tk5wh"), SubResource("BTRandomWait_ms36n")]
+metadata/_weight_ = 1.0
 
-[sub_resource type="BTProbabilitySelector" id="BTProbabilitySelector_w2pji"]
-children = [SubResource("BTSequence_2netc"), SubResource("BTSequence_pw66u")]
+[sub_resource type="BTProbabilitySelector" id="BTProbabilitySelector_bf1eu"]
+children = [SubResource("BTSequence_tk5wh"), SubResource("BTSequence_qkcup")]
 
 [sub_resource type="BTDynamicSelector" id="BTDynamicSelector_w1h3i"]
-children = [SubResource("BTSequence_d7hiu"), SubResource("BTProbabilitySelector_w2pji")]
+children = [SubResource("BTSequence_c6q2p"), SubResource("BTProbabilitySelector_bf1eu")]
 
 [resource]
 blackboard_plan = SubResource("BlackboardPlan_mk1ew")

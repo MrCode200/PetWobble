@@ -10,6 +10,12 @@ public partial class MouseInteractionHandler : Node
 	[Export] public bool UseUnhandledInput;
 
 	[Signal] public delegate void ClickedEventHandler(InputEvent @event, Vector2 pressPos);
+
+	[Signal]
+	public delegate void LeftClickedEventHandler(InputEvent @event, Vector2 pressPos);
+	[Signal]
+	public delegate void RightClickedEventHandler(InputEvent @event, Vector2 pressPos);
+	
 	[Signal] public delegate void DragStartedEventHandler(InputEvent @event, Vector2 currentPos,  Vector2 pressPos);
 	[Signal] public delegate void DragMovedEventHandler(InputEvent @event, Vector2 currentPos, Vector2 pressPos);
 	[Signal] public delegate void DragEndedEventHandler(InputEvent @event, Vector2 currentPos, Vector2 pressPos);
@@ -69,6 +75,10 @@ public partial class MouseInteractionHandler : Node
 				else
 				{
 					EmitSignal(SignalName.Clicked, @event, PressPos);
+					if (click.ButtonIndex == MouseButton.Left)
+						EmitSignalLeftClicked(@event, PressPos);
+					else if (click.ButtonIndex == MouseButton.Right)
+						EmitSignalRightClicked(@event, PressPos);
 				}
 			}
 		}

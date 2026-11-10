@@ -20,13 +20,15 @@ public partial class MouseSoftBodyDragger : Node2D
     private Vector2 _shapeCenter;
     
     // ReSharper disable once InconsistentNaming
-    private bool _isDraggingSB;
+    public bool IsDraggingSB;
+    
     private Point[] _overlappingPoints = [];
     private Vector2[] _grabOffsets = [];
     private float _unfreezeCountdown;
     
     public override void _Ready()
     {
+        SB.SoftBodyInitialized += OnSoftBodyInit;
         MIH.DragStarted += OnDragStarted;
         MIH.DragEnded += OnDragEnded;
         SB.AddCustomSolver(Solve);
@@ -34,9 +36,18 @@ public partial class MouseSoftBodyDragger : Node2D
 
     public override void _ExitTree()
     {
+        SB.SoftBodyInitialized -= OnSoftBodyInit;
         MIH.DragStarted -= OnDragStarted;
         MIH.DragEnded -= OnDragEnded;
         SB.RemoveCustomSolver(Solve);
+    }
+
+    private void OnSoftBodyInit()
+    {
+        IsDraggingSB = false;
+        UnfreezePoints();
+        _overlappingPoints = [];
+        _grabOffsets = [];
     }
 
     private void OnDragStarted(InputEvent @event, Vector2 currentPos, Vector2 pressPos)
@@ -62,18 +73,18 @@ public partial class MouseSoftBodyDragger : Node2D
             _grabOffsets[i] = SB.ToGlobal(_overlappingPoints[i].Position) - pressPos;
             _overlappingPoints[i].Frozen = true;
         }
-        _isDraggingSB = true;
+        IsDraggingSB = true;
     }
     
     private void OnDragEnded(InputEvent @event, Vector2 currentPos, Vector2 pressPos)
     {
-        _isDraggingSB = false;
+        IsDraggingSB = false;
         _unfreezeCountdown = UnfreezeDelay; // Requests To Unfreeze
     }
 
     public override void _PhysicsProcess(double delta)
     {
-        if (_isDraggingSB)
+        if (IsDraggingSB)
         {
             var dt = (float)delta;
             var mousePos = GetGlobalMousePosition();
@@ -114,7 +125,7 @@ public partial class MouseSoftBodyDragger : Node2D
     
     public void Solve(SoftBody sb, float h)
     {
-        if (!_isDraggingSB)
+        if (!IsDraggingSB)
             return;
         
         // Freeze Points, ergo no external force changes it, move once points to position of mouse

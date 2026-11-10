@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://0yep0miik15w"]
 
 [ext_resource type="Texture2D" uid="uid://bieyydinm2rw1" path="res://Wobble/spritesheet.png" id="1_i2280"]
-[ext_resource type="BehaviorTree" uid="uid://dtpwtvcotk2tr" path="res://Wobble/WobbleBehaviourTree.tres" id="3_ye4jp"]
+[ext_resource type="BehaviorTree" uid="uid://dtpwtvcotk2tr" path="res://Wobble/WobbleBehaviourTreeOld.tres" id="3_ye4jp"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_mk1ew"]
 atlas = ExtResource("1_i2280")

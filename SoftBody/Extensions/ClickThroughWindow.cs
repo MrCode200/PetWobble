@@ -158,7 +158,7 @@ public partial class ClickThroughWindow : Node2D
 		return false;
 	}
 	
-	private void SetPassthrough(bool passthrough)
+	public void SetPassthrough(bool passthrough)
 	{
 		if (_passthrough == passthrough)
 			return;
