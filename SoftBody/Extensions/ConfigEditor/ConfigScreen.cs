@@ -37,7 +37,8 @@ public partial class ConfigScreen : Window
 
 	private sealed class Section
 	{
-		public GodotObject Target;
+		public GodotObject Target; // object that actually holds the values (differs from Owner for IConfigProxy)
+		public Node Owner;         // the node listed in Targets (title, callbacks, extras)
 		public readonly List<(string Name, Control Row)> Rows = new();
 	}
 
@@ -51,8 +52,6 @@ public partial class ConfigScreen : Window
 	// ------------------------------------------------------------------ lifecycle
 	public override void _Ready()
 	{
-		AlwaysOnTop = true;
-		
 		Title = "Slime Settings";
 		MinSize = new Vector2I(380, 300);
 		Transient = true;
@@ -67,19 +66,13 @@ public partial class ConfigScreen : Window
 	public void Open()
 	{
 		int tab = _tabs != null && IsInstanceValid(_tabs) ? _tabs.CurrentTab : 0;
-		BuildUi();
+		BuildUi(); // rebuilt on every open so values are never stale
 		if (tab >= 0 && tab < _tabs.GetTabCount()) _tabs.CurrentTab = tab;
 
-		if (Visible) { GrabFocus(); return; }
-
-		var area = DisplayServer.ScreenGetUsableRect(DisplayServer.WindowGetCurrentScreen());
-		var size = new Vector2I(
-			Math.Min(WindowSize.X, area.Size.X - 40),
-			Math.Min(WindowSize.Y, area.Size.Y - 80));
-		Size = size;
-		Position = area.Position + (area.Size - size) / 2;
-		Show();
+		if (Visible) GrabFocus();
+		else PopupCentered(WindowSize);
 	}
+
 	public void Close()
 	{
 		Hide();
@@ -112,7 +105,7 @@ public partial class ConfigScreen : Window
 
 	private void BuildSection(Node target)
 	{
-		var section = new Section { Target = target };
+		var section = new Section { Target = Resolve(target), Owner = target };
 		_sections.Add(section);
 
 		var scroll = new ScrollContainer
@@ -127,7 +120,10 @@ public partial class ConfigScreen : Window
 		Container parent = body;
 		string lastGroup = null;
 
-		foreach (var p in EnumerateProps(target))
+		if (section.Target == null)
+			body.AddChild(new Label { Text = "Not available right now (target not found or not running yet)." });
+
+		foreach (var p in EnumerateProps(section.Target))
 		{
 			if (p.Group != lastGroup)
 			{
@@ -186,8 +182,9 @@ public partial class ConfigScreen : Window
 		HintString = p.HintString,
 		Commit = v =>
 		{
+			if (!GodotObject.IsInstanceValid(s.Target)) return;
 			s.Target.Set(p.Name, v);
-			(s.Target as IConfigurable)?.OnConfigChanged(p.Name);
+			(s.Owner as IConfigurable)?.OnConfigChanged(p.Name);
 			Refresh(s);
 		},
 	};
@@ -195,6 +192,8 @@ public partial class ConfigScreen : Window
 	/// <summary>Re-evaluates _ValidateProperty results: hides rows / makes them read-only.</summary>
 	private static void Refresh(Section s)
 	{
+		if (s.Target == null || !GodotObject.IsInstanceValid(s.Target)) return;
+
 		var usage = new Dictionary<string, PropertyUsageFlags>();
 		foreach (var d in s.Target.GetPropertyList())
 			usage[d["name"].AsString()] = (PropertyUsageFlags)d["usage"].AsInt64();
@@ -238,6 +237,8 @@ public partial class ConfigScreen : Window
 	/// </summary>
 	private static IEnumerable<Prop> EnumerateProps(GodotObject target)
 	{
+		if (target == null || !GodotObject.IsInstanceValid(target)) yield break;
+
 		var exported = ExportedNames(target.GetType());
 		string group = null;
 
@@ -268,20 +269,27 @@ public partial class ConfigScreen : Window
 	private static string Key(GodotObject t) => t is Node n ? n.Name.ToString() : t.GetType().Name;
 	private static string ResPath(GodotObject t, string prop) => $"user://cfg_{Key(t)}_{prop}.tres";
 
+	/// <summary>The object that holds the values: the node itself, or what its IConfigProxy points to.</summary>
+	private static GodotObject Resolve(Node owner) =>
+		owner is IConfigProxy proxy ? proxy.ConfigObject : owner;
+
 	public void SaveSettings()
 	{
 		var cfg = new ConfigFile();
-		foreach (var t in Targets)
+		cfg.Load(SavePath); // keep old values of targets that are unavailable right now (e.g. a BT task not running)
+
+		foreach (var owner in Targets)
 		{
-			if (!IsInstanceValid(t)) continue;
-			foreach (var p in EnumerateProps(t))
+			if (!IsInstanceValid(owner)) continue;
+			var t = Resolve(owner);
+			foreach (var p in EnumerateProps(t)) // yields nothing when t is null
 			{
 				var v = t.Get(p.Name);
 				if (p.Type == Variant.Type.Object)
 				{
-					if (v.AsGodotObject() is Resource r) ResourceSaver.Save(r, ResPath(t, p.Name));
+					if (v.AsGodotObject() is Resource r) ResourceSaver.Save(r, ResPath(owner, p.Name));
 				}
-				else cfg.SetValue(Key(t), p.Name, v);
+				else cfg.SetValue(Key(owner), p.Name, v);
 			}
 		}
 		cfg.Save(SavePath);
@@ -292,22 +300,23 @@ public partial class ConfigScreen : Window
 		var cfg = new ConfigFile();
 		if (cfg.Load(SavePath) != Error.Ok) return;
 
-		foreach (var t in Targets)
+		foreach (var owner in Targets)
 		{
-			if (!IsInstanceValid(t)) continue;
-			foreach (var p in EnumerateProps(t))
+			if (!IsInstanceValid(owner)) continue;
+			var t = Resolve(owner);
+			foreach (var p in EnumerateProps(t)) // yields nothing when t is null
 			{
 				if (p.Type == Variant.Type.Object)
 				{
-					var path = ResPath(t, p.Name);
+					var path = ResPath(owner, p.Name);
 					if (!ResourceLoader.Exists(path)) continue;
 					t.Set(p.Name, ResourceLoader.Load(path));
 				}
-				else if (cfg.HasSectionKey(Key(t), p.Name))
-					t.Set(p.Name, cfg.GetValue(Key(t), p.Name));
+				else if (cfg.HasSectionKey(Key(owner), p.Name))
+					t.Set(p.Name, cfg.GetValue(Key(owner), p.Name));
 				else continue;
 
-				(t as IConfigurable)?.OnConfigChanged(p.Name);
+				(owner as IConfigurable)?.OnConfigChanged(p.Name);
 			}
 		}
 	}

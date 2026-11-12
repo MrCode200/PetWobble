@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using Godot;
+using PetWobble.Config;
 
 namespace PetWobble.Const.ai.tasks;
 
@@ -43,6 +44,7 @@ public partial class WobbleJumpAction : BTAction
         Decay?.Bake();
         DirectionChange?.Bake();
         YForceMultiplier?.Bake();
+        BTTaskRegistry.Register(this);
         CalcNewDirection();
     }
 

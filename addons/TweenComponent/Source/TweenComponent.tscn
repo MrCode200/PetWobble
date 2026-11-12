@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://brlo37ft0qflt"]
+
+[ext_resource type="Script" uid="uid://bf4sis3utsfxc" path="res://addons/TweenComponent/Source/TweenComponent.cs" id="1_durdu"]
+
+[node name="TweenComponent" type="Node" unique_id=263332114]
+script = ExtResource("1_durdu")

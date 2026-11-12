@@ -26,6 +26,7 @@
 [ext_resource type="Texture2D" uid="uid://db053uu7sgnd5" path="res://Wobble/slimeball1EyeAnim.png" id="15_d7dfr"]
 [ext_resource type="Texture2D" uid="uid://b45h01f2etqnv" path="res://Wobble/slimeballJustSlime.png" id="15_gn8l5"]
 [ext_resource type="BehaviorTree" uid="uid://dale3kjm14lld" path="res://Wobble/WobbleBehaviourTree.tres" id="20_6tx0c"]
+[ext_resource type="Script" uid="uid://be6qgpvq2h5s2" path="res://SoftBody/Extensions/ConfigEditor/BTTaskConfigAdapter.cs" id="20_c2gv2"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_bah7m"]
 
@@ -44,9 +45,9 @@ size = Vector2(646.7, 20)
 [sub_resource type="Resource" id="Resource_d7dfr"]
 script = ExtResource("11_aj1ai")
 Property = NodePath("scale")
-UseExplicitFrom = true
-FromValue = Vector2(3.8, 3.8)
-ToValue = Vector2(4.2, 4.2)
+FromValue = Vector2(0.1, 0.1)
+ToValue = Vector2(0.15, 0.15)
+SetValueRelative = true
 Duration = 1.0
 Transition = 4
 TargetOverride = NodePath("")
@@ -265,66 +266,74 @@ physics_material_override = SubResource("PhysicsMaterial_00os5")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Systems/ManageDisplayWallColliders/Right" unique_id=1562925400]
 shape = SubResource("RectangleShape2D_xl7b4")
 
-[node name="TapeMustache" type="Node2D" parent="Systems" unique_id=199713280 node_paths=PackedStringArray("Target", "SoftBody")]
+[node name="ClickThroughWindow" type="Node2D" parent="Systems" unique_id=85910573 node_paths=PackedStringArray("ClickableAreas")]
+script = ExtResource("10_gn8l5")
+ClickableAreas = [NodePath("../../SoftBody/Area2D")]
+ClickableMask = 128
+
+[node name="Visuals" type="Node" parent="." unique_id=1732294999]
+
+[node name="TapeMustache" type="Node2D" parent="Visuals" unique_id=199713280 node_paths=PackedStringArray("Target", "SoftBody")]
 script = ExtResource("7_ee7l0")
 Target = NodePath("Sprite2D")
 SoftBody = NodePath("../../SoftBody")
 PointDirections = Array[float]([])
 DrawDebug = true
 
-[node name="Sprite2D" type="Sprite2D" parent="Systems/TapeMustache" unique_id=2062054162]
+[node name="Sprite2D" type="Sprite2D" parent="Visuals/TapeMustache" unique_id=2062054162]
 scale = Vector2(4, 4)
 texture = ExtResource("8_ee7l0")
 
-[node name="TweenComponent" parent="Systems/TapeMustache/Sprite2D" unique_id=263332114 node_paths=PackedStringArray("Target") instance=ExtResource("8_jyqkj")]
+[node name="TweenComponent" parent="Visuals/TapeMustache/Sprite2D" unique_id=263332114 node_paths=PackedStringArray("Target") instance=ExtResource("8_jyqkj")]
 Target = NodePath("..")
 TweenBlueprints = Dictionary[StringName, ExtResource("9_ydbc3")]({
 &"Hover": SubResource("Resource_c2gv2"),
 &"HoverPos": ExtResource("10_aj1ai")
 })
-Disable = true
 
-[node name="TapeEye1" type="Node2D" parent="Systems" unique_id=460147087 node_paths=PackedStringArray("Target", "SoftBody")]
+[node name="TapeEye1" type="Node2D" parent="Visuals" unique_id=460147087 node_paths=PackedStringArray("Target", "SoftBody")]
 script = ExtResource("7_ee7l0")
 Target = NodePath("Sprite2D")
 SoftBody = NodePath("../../SoftBody")
 PointDirections = Array[float]([4.712, 4.712, 4.712, 3.142, 5.9, 4.9])
 
-[node name="Sprite2D" type="Sprite2D" parent="Systems/TapeEye1" unique_id=1545646200]
+[node name="Sprite2D" type="Sprite2D" parent="Visuals/TapeEye1" unique_id=1545646200]
 scale = Vector2(4, 4)
 texture = ExtResource("9_gn8l5")
 
-[node name="TapeEye2" type="Node2D" parent="Systems" unique_id=1412037759 node_paths=PackedStringArray("Target", "SoftBody")]
+[node name="TapeEye2" type="Node2D" parent="Visuals" unique_id=1412037759 node_paths=PackedStringArray("SoftBody")]
 script = ExtResource("7_ee7l0")
-Target = NodePath("")
 SoftBody = NodePath("../../SoftBody")
 PointDirections = Array[float]([4.712, 4.712, 4.712, 0.0, 5.9, 4.0])
 
-[node name="Sprite2D" type="AnimatedSprite2D" parent="Systems/TapeEye2" unique_id=865868242]
+[node name="Sprite2D" type="AnimatedSprite2D" parent="Visuals/TapeEye2" unique_id=865868242]
 scale = Vector2(4, 4)
 sprite_frames = SubResource("SpriteFrames_cgf4g")
 animation = &"blink"
 autoplay = "blink"
 
-[node name="ClickThroughWindow" type="Node2D" parent="Systems" unique_id=85910573 node_paths=PackedStringArray("ClickableAreas")]
-script = ExtResource("10_gn8l5")
-ClickableAreas = [NodePath("../../SoftBody/Area2D")]
-ClickableMask = 128
+[node name="Config" type="Node" parent="." unique_id=1182789334]
 
-[node name="ConfigScreen" type="Window" parent="Systems" unique_id=1377929367 node_paths=PackedStringArray("Targets")]
+[node name="ConfigScreen" type="Window" parent="Config" unique_id=1377929367 node_paths=PackedStringArray("Targets")]
 oversampling_override = 1.0
 position = Vector2i(0, 36)
 script = ExtResource("11_sjtuv")
-Targets = [NodePath("../../SoftBody"), NodePath("../MousePusher"), NodePath("../MouseDragger"), NodePath("../ManageDisplayWallColliders"), NodePath("../SlimeSkinConfig"), NodePath("../TapeMustache"), NodePath("../TapeEye1"), NodePath("../TapeEye2")]
+Targets = [NodePath("../../SoftBody"), NodePath("../../Systems/MousePusher"), NodePath("../../Systems/MouseDragger"), NodePath("../../Systems/ManageDisplayWallColliders"), NodePath("../SlimeSkinConfig"), NodePath("../../Visuals/TapeMustache"), NodePath("../../Visuals/TapeEye1"), NodePath("../../Visuals/TapeEye2"), NodePath("../BtJumpActionAdapter")]
 
-[node name="SlimeSkinConfig" type="Node" parent="Systems" unique_id=1002165001 node_paths=PackedStringArray("SB")]
+[node name="SlimeSkinConfig" type="Node" parent="Config" unique_id=1002165001 node_paths=PackedStringArray("SB")]
 script = ExtResource("12_cvq6i")
 SB = NodePath("../../SoftBody")
 
-[node name="ConfigScreenOpener" type="Node" parent="Systems" unique_id=1309713196 node_paths=PackedStringArray("MIH", "ConfigScreen")]
+[node name="ConfigScreenOpener" type="Node" parent="Config" unique_id=1309713196 node_paths=PackedStringArray("MIH", "ConfigScreen")]
 script = ExtResource("13_cvq6i")
-MIH = NodePath("../MouseInteractionHandler")
+MIH = NodePath("../../Systems/MouseInteractionHandler")
 ConfigScreen = NodePath("../ConfigScreen")
+
+[node name="BtJumpActionAdapter" type="Node" parent="Config" unique_id=1830276968 node_paths=PackedStringArray("Agent")]
+script = ExtResource("20_c2gv2")
+Title = "JumpConfig"
+TaskName = "WobbleJumpAction"
+Agent = NodePath("../../SoftBody")
 
 [node name="SoftBody2D" type="Polygon2D" parent="." unique_id=1820491336]
 position = Vector2(210, 57)

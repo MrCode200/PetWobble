@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="TweenBlueprint" format=3 uid="uid://claswqmgsghq1"]
+
+[ext_resource type="Script" uid="uid://bdnteh7isw3xe" path="res://addons/TweenComponent/Source/Resources/Blueprints/CustomSignalData.cs" id="1_0w3vu"]
+[ext_resource type="Script" uid="uid://babs031xcw23x" path="res://addons/TweenComponent/Source/Resources/Blueprints/TweenStep.cs" id="2_4uanq"]
+[ext_resource type="Script" uid="uid://dgx06qq13talq" path="res://addons/TweenComponent/Source/Resources/Blueprints/TweenBlueprint.cs" id="3_mcyxm"]
+
+[sub_resource type="Resource" id="Resource_8lias"]
+script = ExtResource("2_4uanq")
+Property = NodePath("position")
+FromValue = null
+ToValue = Vector2(0, 10)
+SetValueRelative = true
+Duration = 1.0
+Transition = 4
+TargetOverride = NodePath("")
+metadata/_custom_type_script = "uid://babs031xcw23x"
+
+[resource]
+script = ExtResource("3_mcyxm")
+Steps = Array[ExtResource("2_4uanq")]([SubResource("Resource_8lias")])
+Triggers = Array[int]([0, 1])
+LoopMode = 2
+Disable = true
+metadata/_custom_type_script = "uid://dgx06qq13talq"

@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://b61htvfptxfhb" path="res://ai/tasks/IsDragging.cs" id="1_2xfxq"]
 [ext_resource type="Script" uid="uid://bmghe60jvcq1r" path="res://ai/tasks/WobbleJumpAction.cs" id="2_00os5"]
 [ext_resource type="Script" uid="uid://sn3hihtirvoe" path="res://ai/tasks/IsColliding.cs" id="2_tk5wh"]
+[ext_resource type="Script" uid="uid://c5etniev1m20" path="res://ai/tasks/IsSpawnRotation.cs" id="4_ms36n"]
+[ext_resource type="Script" uid="uid://cmcnjxhduemk" path="res://ai/tasks/WobbleRollAction.cs" id="5_c6q2p"]
 
 [sub_resource type="BlackboardPlan" id="BlackboardPlan_mk1ew"]
 var/IsDragging/name = &"IsDragging"
@@ -27,7 +29,7 @@ children = [SubResource("BTCondition_2xfxq"), SubResource("BTRandomWait_tk5wh")]
 max_duration = 4.0
 
 [sub_resource type="BTSequence" id="BTSequence_tk5wh"]
-custom_name = "Sequence Idle"
+custom_name = "Sequence Roll"
 children = [SubResource("BTRandomWait_00os5")]
 metadata/_weight_ = 1.0
 
@@ -86,12 +88,33 @@ min_duration = 2.0
 max_duration = 5.0
 
 [sub_resource type="BTSequence" id="BTSequence_qkcup"]
-custom_name = "Sequence Moving"
+custom_name = "Sequence Jump"
 children = [SubResource("BTCondition_ms36n"), SubResource("BTTimeLimit_00os5"), SubResource("BTAction_00os5"), SubResource("BTRepeatUntilSuccess_tk5wh"), SubResource("BTRandomWait_ms36n")]
 metadata/_weight_ = 1.0
 
+[sub_resource type="BTCondition" id="BTCondition_c6q2p"]
+script = ExtResource("2_tk5wh")
+SoftBodyPath = NodePath("SoftBody")
+
+[sub_resource type="BTCondition" id="BTCondition_i8orf"]
+script = ExtResource("4_ms36n")
+SoftBodyPath = NodePath("SoftBody")
+ErrorTolerancePercent = 0.05
+
+[sub_resource type="BTAction" id="BTAction_qkcup"]
+script = ExtResource("5_c6q2p")
+SoftBodyPath = NodePath("SoftBody")
+Force = 2.5
+ErrorTolerancePercent = 0.04
+KNeighbours = 4
+
+[sub_resource type="BTSequence" id="BTSequence_bf1eu"]
+custom_name = "Sequence Idle"
+children = [SubResource("BTCondition_c6q2p"), SubResource("BTCondition_i8orf"), SubResource("BTAction_qkcup")]
+metadata/_weight_ = 10.0
+
 [sub_resource type="BTProbabilitySelector" id="BTProbabilitySelector_bf1eu"]
-children = [SubResource("BTSequence_tk5wh"), SubResource("BTSequence_qkcup")]
+children = [SubResource("BTSequence_tk5wh"), SubResource("BTSequence_qkcup"), SubResource("BTSequence_bf1eu")]
 
 [sub_resource type="BTDynamicSelector" id="BTDynamicSelector_w1h3i"]
 children = [SubResource("BTSequence_c6q2p"), SubResource("BTProbabilitySelector_bf1eu")]

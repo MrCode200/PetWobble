@@ -1034,7 +1034,7 @@ public partial class SoftBody : Polygon2D
 			}
 		}
 		
-		if (DrawJoints)
+		if (DrawJoints && Joints is not null)
 		{
 			foreach (var j in Joints)
 			{

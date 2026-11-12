@@ -1,0 +1,9 @@
+﻿Validate and append message then show in plugin screen:        
+        if (!_ValidateTriggers())
+            return;
+
+        if (!_ValidateIdentifiers())
+            return;
+        
+        if (!_ValidateProperties())
+            return;
