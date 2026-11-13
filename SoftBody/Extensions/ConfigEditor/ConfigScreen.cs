@@ -219,37 +219,82 @@ public partial class ConfigScreen : Window
 	}
 
 	// ------------------------------------------------------------------ property discovery
-	private static HashSet<string> ExportedNames(Type type)
+	/// <summary>[Export] members of the type (and its script base types) plus the [ExportGroup] names it declares.</summary>
+	private static Dictionary<string, MemberInfo> ExportedMembers(Type type, out HashSet<string> groups)
 	{
-		var set = new HashSet<string>();
+		var map = new Dictionary<string, MemberInfo>();
+		groups = new HashSet<string>();
 		const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public |
-		                           BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+			BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+
 		for (var t = type; t != null && t != typeof(GodotObject); t = t.BaseType)
 			foreach (var m in t.GetMembers(flags))
+			{
+				if (Attribute.GetCustomAttribute(m, typeof(ExportGroupAttribute)) is ExportGroupAttribute g)
+					groups.Add(g.Name);
 				if (Attribute.IsDefined(m, typeof(ExportAttribute)))
-					set.Add(m.Name);
-		return set;
+					map[m.Name] = m;
+			}
+		return map;
 	}
 
 	/// <summary>
-	/// Uses Godot's own property list (correct order, groups, hints, validated usage flags) and
-	/// keeps only the members that carry [Export] in C#.
+	/// Godot can hand back a script's properties in reverse declaration order (seen in exported builds,
+	/// not in the editor). Metadata tokens grow in declaration order, so compare neighbouring members
+	/// of the same kind and declaring type: mostly descending means the list is reversed.
+	/// </summary>
+	private static bool IsReversed(List<string> names, Dictionary<string, MemberInfo> members)
+	{
+		int asc = 0, desc = 0;
+		MemberInfo prev = null;
+		foreach (var n in names)
+		{
+			if (!members.TryGetValue(n, out var m)) continue;
+			if (prev != null && prev.MemberType == m.MemberType && prev.DeclaringType == m.DeclaringType)
+			{
+				if (m.MetadataToken > prev.MetadataToken) asc++;
+				else desc++;
+			}
+			prev = m;
+		}
+		return desc > asc;
+	}
+
+	/// <summary>
+	/// Godot's property list supplies types, hints, usage flags and group markers; reflection supplies
+	/// which entries are the script's own and what order they were declared in. Base-class entries
+	/// (categories, groups like Polygon2D's "Data") are dropped so they can't leak into our groups.
 	/// </summary>
 	private static IEnumerable<Prop> EnumerateProps(GodotObject target)
 	{
 		if (target == null || !GodotObject.IsInstanceValid(target)) yield break;
 
-		var exported = ExportedNames(target.GetType());
-		string group = null;
+		var members = ExportedMembers(target.GetType(), out var groupNames);
 
+		var entries = new List<Godot.Collections.Dictionary>();
 		foreach (var d in target.GetPropertyList())
 		{
 			var usage = (PropertyUsageFlags)d["usage"].AsInt64();
 			var name = d["name"].AsString();
+			bool isOwnGroup = usage.HasFlag(PropertyUsageFlags.Group) && groupNames.Contains(name);
+			if (isOwnGroup || members.ContainsKey(name))
+				entries.Add(d);
+		}
 
-			if (usage.HasFlag(PropertyUsageFlags.Category)) { group = null; continue; }
+		var propNames = entries
+			.Select(e => e["name"].AsString())
+			.Where(members.ContainsKey)
+			.ToList();
+		if (IsReversed(propNames, members))
+			entries.Reverse();
+
+		string group = null;
+		foreach (var d in entries)
+		{
+			var usage = (PropertyUsageFlags)d["usage"].AsInt64();
+			var name = d["name"].AsString();
+
 			if (usage.HasFlag(PropertyUsageFlags.Group)) { group = name == "" ? null : name; continue; }
-			if (!exported.Contains(name)) continue;
 
 			var type = (Variant.Type)d["type"].AsInt32();
 			var hint = (PropertyHint)d["hint"].AsInt32();

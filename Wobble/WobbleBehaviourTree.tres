@@ -29,9 +29,9 @@ children = [SubResource("BTCondition_2xfxq"), SubResource("BTRandomWait_tk5wh")]
 max_duration = 4.0
 
 [sub_resource type="BTSequence" id="BTSequence_tk5wh"]
-custom_name = "Sequence Roll"
+custom_name = "Sequence Idle"
 children = [SubResource("BTRandomWait_00os5")]
-metadata/_weight_ = 1.0
+metadata/_weight_ = 1.94
 
 [sub_resource type="BTCondition" id="BTCondition_ms36n"]
 script = ExtResource("2_tk5wh")
@@ -99,19 +99,30 @@ SoftBodyPath = NodePath("SoftBody")
 [sub_resource type="BTCondition" id="BTCondition_i8orf"]
 script = ExtResource("4_ms36n")
 SoftBodyPath = NodePath("SoftBody")
-ErrorTolerancePercent = 0.05
+ErrorTolerancePercent = 0.035
 
-[sub_resource type="BTAction" id="BTAction_qkcup"]
+[sub_resource type="BTComment" id="BTComment_ms36n"]
+custom_name = "Wont run 2x times prob as dynamci selector checks the moment is spawn rotation is false breaks the loop"
+
+[sub_resource type="BTAction" id="BTAction_c6q2p"]
 script = ExtResource("5_c6q2p")
 SoftBodyPath = NodePath("SoftBody")
-Force = 2.5
-ErrorTolerancePercent = 0.04
-KNeighbours = 4
+Force = 1.15
+ErrorTolerancePercent = 0.035
+Lerp = true
+KNeighbours = 6
+
+[sub_resource type="BTRepeat" id="BTRepeat_i8orf"]
+children = [SubResource("BTAction_c6q2p")]
+times = 2
+
+[sub_resource type="BTTimeLimit" id="BTTimeLimit_ms36n"]
+children = [SubResource("BTComment_ms36n"), SubResource("BTRepeat_i8orf")]
 
 [sub_resource type="BTSequence" id="BTSequence_bf1eu"]
-custom_name = "Sequence Idle"
-children = [SubResource("BTCondition_c6q2p"), SubResource("BTCondition_i8orf"), SubResource("BTAction_qkcup")]
-metadata/_weight_ = 10.0
+custom_name = "Sequence Roll"
+children = [SubResource("BTCondition_c6q2p"), SubResource("BTCondition_i8orf"), SubResource("BTTimeLimit_ms36n")]
+metadata/_weight_ = 0.6
 
 [sub_resource type="BTProbabilitySelector" id="BTProbabilitySelector_bf1eu"]
 children = [SubResource("BTSequence_tk5wh"), SubResource("BTSequence_qkcup"), SubResource("BTSequence_bf1eu")]

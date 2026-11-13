@@ -23,7 +23,6 @@
 [ext_resource type="Script" uid="uid://du8pki2isot2i" path="res://SoftBody/Extensions/ConfigEditor/ConfigScreen.cs" id="11_sjtuv"]
 [ext_resource type="Script" uid="uid://1ca75kg7ybnh" path="res://SoftBody/Extensions/ConfigEditor/SlimeSkinConfig.cs" id="12_cvq6i"]
 [ext_resource type="Script" uid="uid://brid3c15cei24" path="res://SoftBody/Extensions/ConfigEditor/ConfigScreenOpener.cs" id="13_cvq6i"]
-[ext_resource type="Texture2D" uid="uid://db053uu7sgnd5" path="res://Wobble/slimeball1EyeAnim.png" id="15_d7dfr"]
 [ext_resource type="Texture2D" uid="uid://b45h01f2etqnv" path="res://Wobble/slimeballJustSlime.png" id="15_gn8l5"]
 [ext_resource type="BehaviorTree" uid="uid://dale3kjm14lld" path="res://Wobble/WobbleBehaviourTree.tres" id="20_6tx0c"]
 [ext_resource type="Script" uid="uid://be6qgpvq2h5s2" path="res://SoftBody/Extensions/ConfigEditor/BTTaskConfigAdapter.cs" id="20_c2gv2"]
@@ -59,47 +58,6 @@ Steps = Array[ExtResource("11_aj1ai")]([SubResource("Resource_d7dfr")])
 Triggers = Array[int]([0, 1])
 LoopMode = 2
 metadata/_custom_type_script = "uid://dgx06qq13talq"
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_c2gv2"]
-atlas = ExtResource("15_d7dfr")
-region = Rect2(0, 0, 3, 5)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_rp4qs"]
-atlas = ExtResource("15_d7dfr")
-region = Rect2(3, 0, 3, 5)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_rhl3w"]
-atlas = ExtResource("15_d7dfr")
-region = Rect2(6, 0, 3, 5)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_bun23"]
-atlas = ExtResource("15_d7dfr")
-region = Rect2(0, 0, 3, 5)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_cgf4g"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_c2gv2")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_rp4qs")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_rhl3w")
-}],
-"loop": 1,
-"name": &"blink",
-"speed": 5.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_bun23")
-}],
-"loop": 1,
-"name": &"open",
-"speed": 5.0
-}]
 
 [sub_resource type="SkeletonModification2DLookAt" id="SkeletonModification2DLookAt_cvq6i"]
 resource_local_to_scene = true
@@ -301,16 +259,15 @@ PointDirections = Array[float]([4.712, 4.712, 4.712, 3.142, 5.9, 4.9])
 scale = Vector2(4, 4)
 texture = ExtResource("9_gn8l5")
 
-[node name="TapeEye2" type="Node2D" parent="Visuals" unique_id=1412037759 node_paths=PackedStringArray("SoftBody")]
+[node name="TapeEye2" type="Node2D" parent="Visuals" unique_id=1412037759 node_paths=PackedStringArray("Target", "SoftBody")]
 script = ExtResource("7_ee7l0")
+Target = NodePath("Sprite2D")
 SoftBody = NodePath("../../SoftBody")
 PointDirections = Array[float]([4.712, 4.712, 4.712, 0.0, 5.9, 4.0])
 
-[node name="Sprite2D" type="AnimatedSprite2D" parent="Visuals/TapeEye2" unique_id=865868242]
+[node name="Sprite2D" type="Sprite2D" parent="Visuals/TapeEye2" unique_id=191042081]
 scale = Vector2(4, 4)
-sprite_frames = SubResource("SpriteFrames_cgf4g")
-animation = &"blink"
-autoplay = "blink"
+texture = ExtResource("9_gn8l5")
 
 [node name="Config" type="Node" parent="." unique_id=1182789334]
 
@@ -318,7 +275,7 @@ autoplay = "blink"
 oversampling_override = 1.0
 position = Vector2i(0, 36)
 script = ExtResource("11_sjtuv")
-Targets = [NodePath("../../SoftBody"), NodePath("../../Systems/MousePusher"), NodePath("../../Systems/MouseDragger"), NodePath("../../Systems/ManageDisplayWallColliders"), NodePath("../SlimeSkinConfig"), NodePath("../../Visuals/TapeMustache"), NodePath("../../Visuals/TapeEye1"), NodePath("../../Visuals/TapeEye2"), NodePath("../BtJumpActionAdapter")]
+Targets = [NodePath("../../SoftBody"), NodePath("../SlimeSkinConfig"), NodePath("../../Systems/MouseDragger"), NodePath("../../Systems/MousePusher"), NodePath("../../Visuals/TapeMustache"), NodePath("../../Visuals/TapeEye1"), NodePath("../../Visuals/TapeEye2"), NodePath("../BtJumpActionAdapter"), NodePath("../BtRollActionAdapter"), NodePath("../../Systems/ManageDisplayWallColliders")]
 
 [node name="SlimeSkinConfig" type="Node" parent="Config" unique_id=1002165001 node_paths=PackedStringArray("SB")]
 script = ExtResource("12_cvq6i")
@@ -328,6 +285,12 @@ SB = NodePath("../../SoftBody")
 script = ExtResource("13_cvq6i")
 MIH = NodePath("../../Systems/MouseInteractionHandler")
 ConfigScreen = NodePath("../ConfigScreen")
+
+[node name="BtRollActionAdapter" type="Node" parent="Config" unique_id=1044674749 node_paths=PackedStringArray("Agent")]
+script = ExtResource("20_c2gv2")
+Title = "RollConfig"
+TaskName = "WobbleRollAction"
+Agent = NodePath("../../SoftBody")
 
 [node name="BtJumpActionAdapter" type="Node" parent="Config" unique_id=1830276968 node_paths=PackedStringArray("Agent")]
 script = ExtResource("20_c2gv2")

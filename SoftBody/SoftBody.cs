@@ -119,6 +119,7 @@ public partial class SoftBody : Polygon2D
 	
 	[ExportGroup("Joints")] 
 	[Export] public float JointRestLength = 10;
+
 	private bool _useSpawnDistanceAsRestLength;
 	[Export] public bool UseSpawnDistanceAsRestLength
 	{

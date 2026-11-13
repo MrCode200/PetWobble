@@ -1,5 +1,6 @@
 ﻿using System;
 using Godot;
+using PetWobble.Config;
 
 namespace PetWobble.Const.ai.tasks;
 
@@ -7,7 +8,8 @@ public partial class WobbleRollAction : BTAction
 {
     [Export] public NodePath SoftBodyPath;
     [Export] public float Force;
-    [Export(PropertyHint.Range, "0,1,0.005")] public float ErrorTolerancePercent;
+    [Export] public float MinForce;
+    [Export(PropertyHint.Range, "0,1,0.0005")] public float ErrorTolerancePercent;
     [Export] public bool Lerp;
     [Export] public int KNeighbours;
     
@@ -19,6 +21,8 @@ public partial class WobbleRollAction : BTAction
         _sb = SceneRoot.GetNode<SoftBody.SoftBody>(SoftBodyPath);
         if (_sb is null)
             throw new InvalidCastException($"{nameof(SoftBodyPath)} is not a SoftBody Node");
+        
+        BTTaskRegistry.Register(this);
     }
 
     public override Status _Tick(double delta)
@@ -46,11 +50,14 @@ public partial class WobbleRollAction : BTAction
             KNeighbours,
             true
          );
-        
+
+        var force = Force;
         if (Lerp)
-            Force = Mathf.Lerp(0, Force, errorPercent);
-        GD.Print($"Rolling {dir} | {Force}");
+        {
+            force = Mathf.Max(MinForce, Mathf.Lerp(0, Force, errorPercent));
+        }        
+        GD.Print($"Roll Dir {dir} | Froce {force}");
         
-        _sb.SBApi.ApplyForce(points, dir * Force);
+        _sb.SBApi.ApplyForce(points, dir * force);
     }
 }
