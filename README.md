@@ -22,6 +22,7 @@
 />
     </a>
 </p>
+
 (~~I don't have much time, but i will def add here image later,~~ thx for understanding <3 (*ˊᗜˋ*)/ᵗᑋᵃᐢᵏ ᵞᵒᵘ*)
 
 ## 🏁 Intro
