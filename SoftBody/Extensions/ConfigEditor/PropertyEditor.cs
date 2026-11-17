@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Godot;
@@ -232,5 +233,222 @@ public static class PropertyEditors
 				return new Label { Text = shape == null ? "(no shape)" : $"({shape.GetClass()} not editable)" };
 		}
 		return box;
+	}
+
+	// ------------------------------------------------------------------ arrays
+	// Supported: Godot.Collections.Array<T>, untyped Godot.Collections.Array, and C# arrays that Godot
+	// turns into packed arrays (float[], double[], int[], long[], string[], Vector2[], Color[]),
+	// with elements of type float/double/int/long/bool/string/Vector2/Color.
+	// System.Collections.Generic.List<T> cannot be exported by Godot at all: use Array<T> or T[].
+	// Arrays of nodes or resources are skipped.
+
+	private sealed class ArrayAdapter
+	{
+		public Variant.Type Element;
+		public Func<List<Variant>> Read;
+		public Action<List<Variant>> Write;
+	}
+
+	private static Variant.Type? ElementTypeOf(System.Type t)
+	{
+		if (t == typeof(float) || t == typeof(double)) return Variant.Type.Float;
+		if (t == typeof(int) || t == typeof(long)) return Variant.Type.Int;
+		if (t == typeof(bool)) return Variant.Type.Bool;
+		if (t == typeof(string)) return Variant.Type.String;
+		if (t == typeof(Vector2)) return Variant.Type.Vector2;
+		if (t == typeof(Color)) return Variant.Type.Color;
+		return null;
+	}
+
+	private static bool IsSupportedElement(Variant.Type t) =>
+		t is Variant.Type.Float or Variant.Type.Int or Variant.Type.Bool
+			or Variant.Type.String or Variant.Type.Vector2 or Variant.Type.Color;
+
+	private static Variant DefaultFor(Variant.Type t) => t switch
+	{
+		Variant.Type.Int => Variant.From(0L),
+		Variant.Type.Bool => Variant.From(false),
+		Variant.Type.String => Variant.From(""),
+		Variant.Type.Vector2 => Variant.From(Vector2.Zero),
+		Variant.Type.Color => Variant.From(Colors.White),
+		_ => Variant.From(0f),
+	};
+
+	private static ArrayAdapter MakeAdapter(PropContext c)
+	{
+		switch (c.Type)
+		{
+			// Packed arrays are values: read a copy, write a whole new array back through Commit
+			case Variant.Type.PackedFloat32Array:
+				return new ArrayAdapter
+				{
+					Element = Variant.Type.Float,
+					Read = () => c.Value.AsFloat32Array().Select(x => Variant.From(x)).ToList(),
+					Write = l => c.Commit(Variant.From(l.Select(v => v.AsSingle()).ToArray())),
+				};
+			case Variant.Type.PackedFloat64Array:
+				return new ArrayAdapter
+				{
+					Element = Variant.Type.Float,
+					Read = () => c.Value.AsFloat64Array().Select(x => Variant.From(x)).ToList(),
+					Write = l => c.Commit(Variant.From(l.Select(v => v.AsDouble()).ToArray())),
+				};
+			case Variant.Type.PackedInt32Array:
+				return new ArrayAdapter
+				{
+					Element = Variant.Type.Int,
+					Read = () => c.Value.AsInt32Array().Select(x => Variant.From(x)).ToList(),
+					Write = l => c.Commit(Variant.From(l.Select(v => v.AsInt32()).ToArray())),
+				};
+			case Variant.Type.PackedInt64Array:
+				return new ArrayAdapter
+				{
+					Element = Variant.Type.Int,
+					Read = () => c.Value.AsInt64Array().Select(x => Variant.From(x)).ToList(),
+					Write = l => c.Commit(Variant.From(l.Select(v => v.AsInt64()).ToArray())),
+				};
+			case Variant.Type.PackedStringArray:
+				return new ArrayAdapter
+				{
+					Element = Variant.Type.String,
+					Read = () => c.Value.AsStringArray().Select(x => Variant.From(x)).ToList(),
+					Write = l => c.Commit(Variant.From(l.Select(v => v.AsString()).ToArray())),
+				};
+			case Variant.Type.PackedVector2Array:
+				return new ArrayAdapter
+				{
+					Element = Variant.Type.Vector2,
+					Read = () => c.Value.AsVector2Array().Select(x => Variant.From(x)).ToList(),
+					Write = l => c.Commit(Variant.From(l.Select(v => v.AsVector2()).ToArray())),
+				};
+			case Variant.Type.PackedColorArray:
+				return new ArrayAdapter
+				{
+					Element = Variant.Type.Color,
+					Read = () => c.Value.AsColorArray().Select(x => Variant.From(x)).ToList(),
+					Write = l => c.Commit(Variant.From(l.Select(v => v.AsColor()).ToArray())),
+				};
+
+			// Godot arrays are shared references: edit the property's own array in place, then Notify
+			case Variant.Type.Array:
+			{
+				Variant.Type? el = null;
+				var clr = c.ClrType;
+				if (clr != null && clr.IsGenericType && clr.GetGenericTypeDefinition() == typeof(Godot.Collections.Array<>))
+				{
+					el = ElementTypeOf(clr.GetGenericArguments()[0]);
+				}
+				else if (clr == typeof(Godot.Collections.Array)) // untyped: look at the contents
+				{
+					var arr = c.Value.AsGodotArray();
+					el = arr.Count == 0 ? Variant.Type.Float
+						: IsSupportedElement(arr[0].VariantType) ? arr[0].VariantType : null;
+				}
+				if (el == null) return null;
+
+				return new ArrayAdapter
+				{
+					Element = el.Value,
+					Read = () => c.Value.AsGodotArray().ToList(),
+					Write = l =>
+					{
+						var arr = c.Value.AsGodotArray();
+						arr.Clear();
+						foreach (var v in l) arr.Add(v);
+						c.Notify();
+					},
+				};
+			}
+		}
+		return null;
+	}
+
+	public static Control ArrayField(PropContext c)
+	{
+		bool isPacked = c.Type is Variant.Type.PackedFloat32Array or Variant.Type.PackedFloat64Array
+			or Variant.Type.PackedInt32Array or Variant.Type.PackedInt64Array
+			or Variant.Type.PackedStringArray or Variant.Type.PackedVector2Array
+			or Variant.Type.PackedColorArray;
+		bool isArray = c.Type == Variant.Type.Array;
+		if (!isArray && !isPacked) return null;
+
+		if (isArray && c.Value.VariantType != Variant.Type.Array)
+			return new Label { Text = "(not assigned: set an empty array in the inspector)" };
+
+		var ad = MakeAdapter(c);
+		if (ad == null) return null; // element type we cannot edit (nodes, resources, ...)
+
+		var root = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+		var header = new HBoxContainer();
+		var count = new Label { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+		var add = new Button { Text = "+ Add" };
+		var list = new VBoxContainer();
+		header.AddChild(count);
+		header.AddChild(add);
+		root.AddChild(header);
+		root.AddChild(list);
+
+		var items = ad.Read();
+
+		Button Btn(string text, Action onPressed)
+		{
+			var b = new Button { Text = text };
+			b.Pressed += onPressed;
+			return b;
+		}
+
+		void Rebuild()
+		{
+			foreach (var ch in list.GetChildren()) ch.QueueFree();
+			count.Text = $"{items.Count} items";
+
+			for (int i = 0; i < items.Count; i++)
+			{
+				int idx = i;
+				var elementCtx = new PropContext
+				{
+					Target = c.Target,
+					Name = c.Name,
+					Type = ad.Element,
+					Hint = PropertyHint.None,
+					HintString = "",
+					ValueOverride = items[idx],
+					Commit = v => { items[idx] = v; ad.Write(items); },
+					Notify = c.Notify,
+				};
+
+				var editor = ConfigScreen.EditorFactories
+					.Select(f => f(elementCtx))
+					.FirstOrDefault(e => e != null) ?? new Label { Text = "?" };
+
+				var row = new HBoxContainer();
+				row.AddChild(new Label { Text = idx.ToString(), CustomMinimumSize = new Vector2(24, 0) });
+				row.AddChild(editor);
+				row.AddChild(Btn("▲", () => Move(idx, -1)));
+				row.AddChild(Btn("▼", () => Move(idx, +1)));
+				row.AddChild(Btn("✕", () => { items.RemoveAt(idx); ad.Write(items); Rebuild(); }));
+				list.AddChild(row);
+			}
+		}
+
+		void Move(int idx, int dir)
+		{
+			int to = idx + dir;
+			if (to < 0 || to >= items.Count) return;
+			(items[idx], items[to]) = (items[to], items[idx]);
+			ad.Write(items);
+			Rebuild();
+		}
+
+		add.Pressed += () =>
+		{
+			// New item = copy of the last one (handy for angles, offsets...), or a type default
+			items.Add(items.Count > 0 ? items[^1] : DefaultFor(ad.Element));
+			ad.Write(items);
+			Rebuild();
+		};
+
+		Rebuild();
+		return root;
 	}
 }

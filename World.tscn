@@ -9,7 +9,7 @@
 [ext_resource type="Script" uid="uid://bv281yrw8826n" path="res://SoftBody/Extensions/MouseSoftBodyDragger.cs" id="4_fv4w7"]
 [ext_resource type="Script" uid="uid://s7j2fnltcxsa" path="res://SoftBody/SoftBody.cs" id="4_js7pq"]
 [ext_resource type="Script" uid="uid://vamc8br2jd3a" path="res://SoftBody/Extensions/WindowFollowSoftBodyCenter.cs" id="5_fvag4"]
-[ext_resource type="Script" uid="uid://85io4b3330hj" path="res://Common/ManageDisplayWallColliders.cs" id="6_kva58"]
+[ext_resource type="Script" uid="uid://85io4b3330hj" path="res://SoftBody/Extensions/ManageDisplayWallColliders.cs" id="6_kva58"]
 [ext_resource type="Script" uid="uid://b3kd04vb3kjgs" path="res://SoftBody/Extensions/NodeTapeToPoint.cs" id="7_ee7l0"]
 [ext_resource type="Texture2D" uid="uid://cnmc4820jc7d8" path="res://Wobble/slimeballMustache.png" id="8_ee7l0"]
 [ext_resource type="PackedScene" uid="uid://brlo37ft0qflt" path="res://addons/TweenComponent/Source/TweenComponent.tscn" id="8_jyqkj"]
@@ -26,6 +26,9 @@
 [ext_resource type="Texture2D" uid="uid://b45h01f2etqnv" path="res://Wobble/slimeballJustSlime.png" id="15_gn8l5"]
 [ext_resource type="BehaviorTree" uid="uid://dale3kjm14lld" path="res://Wobble/WobbleBehaviourTree.tres" id="20_6tx0c"]
 [ext_resource type="Script" uid="uid://be6qgpvq2h5s2" path="res://SoftBody/Extensions/ConfigEditor/BTTaskConfigAdapter.cs" id="20_c2gv2"]
+[ext_resource type="Texture2D" uid="uid://bieyydinm2rw1" path="res://Wobble/spritesheet.png" id="23_rhl3w"]
+[ext_resource type="Script" uid="uid://dxr0a5e1nmhpc" path="res://SoftBody/Extensions/ProximityRevealer.cs" id="27_rp4qs"]
+[ext_resource type="Shader" uid="uid://cfae10s6nkira" path="res://Common/ProximityReveal.gdshader" id="28_rhl3w"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_bah7m"]
 
@@ -35,11 +38,6 @@ point_count = 3
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_cgf4g"]
 radius = 15.0
-
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_00os5"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_xl7b4"]
-size = Vector2(646.7, 20)
 
 [sub_resource type="Resource" id="Resource_d7dfr"]
 script = ExtResource("11_aj1ai")
@@ -155,6 +153,152 @@ modifications/10 = SubResource("SkeletonModification2DLookAt_0to5b")
 [sub_resource type="CircleShape2D" id="CircleShape2D_gtthi"]
 resource_local_to_scene = true
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_mk1ew"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(0, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ye4jp"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(30, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_uq10s"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(0, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ynxu6"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(30, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lovw3"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(30, 90, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6migt"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(0, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dqob7"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(30, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rpfek"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(60, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ffimq"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(90, 0, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_p7a2d"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(0, 30, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gcncu"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(30, 30, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2w84w"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(60, 30, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_o1ptl"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(90, 30, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_feks7"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(0, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0psij"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(30, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_x1x1y"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(60, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sx2dt"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(90, 60, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b7rxl"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(0, 90, 30, 30)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v0ke0"]
+atlas = ExtResource("23_rhl3w")
+region = Rect2(30, 90, 30, 30)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_bun23"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mk1ew")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ye4jp")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_uq10s")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ynxu6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lovw3")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6migt")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dqob7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_rpfek")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ffimq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_p7a2d")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gcncu")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2w84w")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_o1ptl")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_feks7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0psij")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_x1x1y")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_sx2dt")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b7rxl")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_v0ke0")
+}],
+"loop": 0,
+"name": &"jumping",
+"speed": 18.0
+}]
+
 [sub_resource type="BlackboardPlan" id="BlackboardPlan_fif40"]
 
 [node name="World" type="Node2D" unique_id=820512449]
@@ -192,37 +336,10 @@ DrawShape = false
 script = ExtResource("5_fvag4")
 SB = NodePath("../../SoftBody")
 
-[node name="ManageDisplayWallColliders" type="Node2D" parent="Systems" unique_id=455070765 node_paths=PackedStringArray("Up", "Down", "Left", "Right")]
+[node name="ManageDisplayWallColliders" type="Node2D" parent="Systems" unique_id=455070765 node_paths=PackedStringArray("SoftBody")]
 script = ExtResource("6_kva58")
+SoftBody = NodePath("../../SoftBody")
 WallThickness = 50.0
-Up = NodePath("Up")
-Down = NodePath("Down")
-Left = NodePath("Left")
-Right = NodePath("Right")
-
-[node name="Up" type="StaticBody2D" parent="Systems/ManageDisplayWallColliders" unique_id=2126810230]
-physics_material_override = SubResource("PhysicsMaterial_00os5")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Systems/ManageDisplayWallColliders/Up" unique_id=708007231]
-shape = SubResource("RectangleShape2D_xl7b4")
-
-[node name="Down" type="StaticBody2D" parent="Systems/ManageDisplayWallColliders" unique_id=1231890481]
-physics_material_override = SubResource("PhysicsMaterial_00os5")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Systems/ManageDisplayWallColliders/Down" unique_id=2105767316]
-shape = SubResource("RectangleShape2D_xl7b4")
-
-[node name="Left" type="StaticBody2D" parent="Systems/ManageDisplayWallColliders" unique_id=231608762]
-physics_material_override = SubResource("PhysicsMaterial_00os5")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Systems/ManageDisplayWallColliders/Left" unique_id=995784857]
-shape = SubResource("RectangleShape2D_xl7b4")
-
-[node name="Right" type="StaticBody2D" parent="Systems/ManageDisplayWallColliders" unique_id=1524179961]
-physics_material_override = SubResource("PhysicsMaterial_00os5")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Systems/ManageDisplayWallColliders/Right" unique_id=1562925400]
-shape = SubResource("RectangleShape2D_xl7b4")
 
 [node name="ClickThroughWindow" type="Node2D" parent="Systems" unique_id=85910573 node_paths=PackedStringArray("ClickableAreas")]
 script = ExtResource("10_gn8l5")
@@ -235,7 +352,6 @@ ClickableMask = 128
 script = ExtResource("7_ee7l0")
 Target = NodePath("Sprite2D")
 SoftBody = NodePath("../../SoftBody")
-PointDirections = Array[float]([])
 DrawDebug = true
 
 [node name="Sprite2D" type="Sprite2D" parent="Visuals/TapeMustache" unique_id=2062054162]
@@ -253,7 +369,7 @@ TweenBlueprints = Dictionary[StringName, ExtResource("9_ydbc3")]({
 script = ExtResource("7_ee7l0")
 Target = NodePath("Sprite2D")
 SoftBody = NodePath("../../SoftBody")
-PointDirections = Array[float]([4.712, 4.712, 4.712, 3.142, 5.9, 4.9])
+PointRadians = Array[float]([0.0, 4.71, 4.71, 4.89, 4.5])
 
 [node name="Sprite2D" type="Sprite2D" parent="Visuals/TapeEye1" unique_id=1545646200]
 scale = Vector2(4, 4)
@@ -263,7 +379,7 @@ texture = ExtResource("9_gn8l5")
 script = ExtResource("7_ee7l0")
 Target = NodePath("Sprite2D")
 SoftBody = NodePath("../../SoftBody")
-PointDirections = Array[float]([4.712, 4.712, 4.712, 0.0, 5.9, 4.0])
+PointRadians = Array[float]([0.0, 4.71, 4.71, 5.24, 5.24])
 
 [node name="Sprite2D" type="Sprite2D" parent="Visuals/TapeEye2" unique_id=191042081]
 scale = Vector2(4, 4)
@@ -1083,7 +1199,15 @@ damping = 0.2
 metadata/joint_distance = 24.774954
 
 [node name="Wobble" parent="." unique_id=1979134453 instance=ExtResource("1_2dftf")]
+visible = false
 position = Vector2(0, 83)
+
+[node name="AnimatedSprite2D2" type="AnimatedSprite2D" parent="." unique_id=1451123993]
+position = Vector2(0, 83)
+scale = Vector2(4, 4)
+sprite_frames = SubResource("SpriteFrames_bun23")
+animation = &"jumping"
+autoplay = "idle"
 
 [node name="SoftBody" type="Polygon2D" parent="." unique_id=1987883066 node_paths=PackedStringArray("CollidablePolygon2D")]
 position = Vector2(500, 500)
@@ -1092,14 +1216,16 @@ polygon = PackedVector2Array(57.77825, 534.998, 57.982037, 540.07745, 57.65317, 
 uv = PackedVector2Array(22, 11, 21.947031, 12.078188, 21.788637, 13.145993, 21.526344, 14.1931305, 21.162674, 15.209518, 20.701134, 16.185364, 20.146164, 17.111273, 19.503115, 17.978327, 18.778175, 18.778175, 17.978325, 19.503115, 17.11127, 20.146166, 16.185364, 20.701134, 15.2095175, 21.162674, 14.1931305, 21.526344, 13.145993, 21.78864, 12.078188, 21.947031, 10.999999, 22, 9.92181, 21.947031, 8.854006, 21.788637, 7.8068676, 21.526342, 6.7904816, 21.162674, 5.8146353, 20.701134, 4.888726, 20.146164, 4.021674, 19.503115, 3.2218256, 18.778175, 2.4968846, 17.978325, 1.8538338, 17.11127, 1.2988645, 16.185364, 0.83732414, 15.209517, 0.47365546, 14.193132, 0.21136159, 13.145993, 0.052968085, 12.078188, 0, 10.999999, 0.052968085, 9.92181, 0.2113629, 8.854005, 0.47365677, 7.8068666, 0.8373261, 6.7904825, 1.2988665, 5.8146353, 1.8538344, 4.8887267, 2.4968853, 4.0216727, 3.2218268, 3.221825, 4.021673, 2.4968853, 4.88873, 1.8538325, 5.814636, 1.2988658, 6.7904854, 0.8373235, 7.8068705, 0.47365546, 8.854006, 0.2113629, 9.921814, 0.052968085, 11, 0, 12.078192, 0.052968085, 13.145994, 0.2113629, 14.193135, 0.47365743, 15.20952, 0.8373261, 16.185364, 1.2988658, 17.111275, 1.8538358, 17.978327, 2.4968853, 18.778177, 3.2218282, 19.503115, 4.021675, 20.146164, 4.8887267, 20.701136, 5.8146377, 21.162676, 6.7904825, 21.526344, 7.8068714, 21.78864, 8.854008, 21.947033, 9.921816, 11, 11)
 polygons = [PackedInt32Array(64, 0, 1), PackedInt32Array(64, 1, 2), PackedInt32Array(64, 2, 3), PackedInt32Array(64, 3, 4), PackedInt32Array(64, 4, 5), PackedInt32Array(64, 5, 6), PackedInt32Array(64, 6, 7), PackedInt32Array(64, 7, 8), PackedInt32Array(64, 8, 9), PackedInt32Array(64, 9, 10), PackedInt32Array(64, 10, 11), PackedInt32Array(64, 11, 12), PackedInt32Array(64, 12, 13), PackedInt32Array(64, 13, 14), PackedInt32Array(64, 14, 15), PackedInt32Array(64, 15, 16), PackedInt32Array(64, 16, 17), PackedInt32Array(64, 17, 18), PackedInt32Array(64, 18, 19), PackedInt32Array(64, 19, 20), PackedInt32Array(64, 20, 21), PackedInt32Array(64, 21, 22), PackedInt32Array(64, 22, 23), PackedInt32Array(64, 23, 24), PackedInt32Array(64, 24, 25), PackedInt32Array(64, 25, 26), PackedInt32Array(64, 26, 27), PackedInt32Array(64, 27, 28), PackedInt32Array(64, 28, 29), PackedInt32Array(64, 29, 30), PackedInt32Array(64, 30, 31), PackedInt32Array(64, 31, 32), PackedInt32Array(64, 32, 33), PackedInt32Array(64, 33, 34), PackedInt32Array(64, 34, 35), PackedInt32Array(64, 35, 36), PackedInt32Array(64, 36, 37), PackedInt32Array(64, 37, 38), PackedInt32Array(64, 38, 39), PackedInt32Array(64, 39, 40), PackedInt32Array(64, 40, 41), PackedInt32Array(64, 41, 42), PackedInt32Array(64, 42, 43), PackedInt32Array(64, 43, 44), PackedInt32Array(64, 44, 45), PackedInt32Array(64, 45, 46), PackedInt32Array(64, 46, 47), PackedInt32Array(64, 47, 48), PackedInt32Array(64, 48, 49), PackedInt32Array(64, 49, 50), PackedInt32Array(64, 50, 51), PackedInt32Array(64, 51, 52), PackedInt32Array(64, 52, 53), PackedInt32Array(64, 53, 54), PackedInt32Array(64, 54, 55), PackedInt32Array(64, 55, 56), PackedInt32Array(64, 56, 57), PackedInt32Array(64, 57, 58), PackedInt32Array(64, 58, 59), PackedInt32Array(64, 59, 60), PackedInt32Array(64, 60, 61), PackedInt32Array(64, 61, 62), PackedInt32Array(64, 62, 63), PackedInt32Array(64, 63, 0)]
 script = ExtResource("4_js7pq")
-PointCount = 64
+PointCount = 46
 PointRadius = 0.001
 Radius = 50.0
+DesiredArea = 8700.0
+CalculateDesiredArea = false
 AreaPressureCoefficient = 0.06
-Gravity = Vector2(0, 250)
+Gravity = Vector2(0, 300)
 MaxSpeed = 4000.0
-MaxSubsteps = 4
-Friction = 0.1
+MaxSubsteps = 46
+Friction = 0.22
 RestitutionThreshold = 40.0
 CollidablePolygon2D = NodePath("Area2D/CollisionPolygon2D")
 PolygonPointOffset = 10.0
@@ -1109,6 +1235,7 @@ BendStiffness = 0.3
 CircularJoints = true
 AirDrag = 0.0005
 AirDensityCurve = ExtResource("11_f5c0m")
+DrawJoints = false
 DrawCollisionImpulses = false
 DrawSelfCollisionImpulses = false
 SelfCollisionArrowSizeMultiplier = 100000000000.0
@@ -1127,3 +1254,19 @@ polygon = PackedVector2Array(29.21819, 511.7993, 33.133114, 515.3258, 36.690407,
 [node name="BTPlayer" type="BTPlayer" parent="SoftBody" unique_id=183576776]
 behavior_tree = ExtResource("20_6tx0c")
 blackboard_plan = SubResource("BlackboardPlan_fif40")
+
+[node name="ProximityRevealerWobbleV2" type="Node" parent="." unique_id=2057785225 node_paths=PackedStringArray("SoftBody", "ToBeFadedIn")]
+script = ExtResource("27_rp4qs")
+RevealDistance = 250.0
+FadeWidth = 30.0
+SoftBody = NodePath("../SoftBody")
+ToBeFadedIn = NodePath("../SoftBody2D")
+ProximityRevealShader = ExtResource("28_rhl3w")
+
+[node name="ProximityRevealerWobbleV1" type="Node" parent="." unique_id=1945117339 node_paths=PackedStringArray("SoftBody", "ToBeFadedIn")]
+script = ExtResource("27_rp4qs")
+RevealDistance = 270.0
+FadeWidth = 20.0
+SoftBody = NodePath("../SoftBody")
+ToBeFadedIn = NodePath("../AnimatedSprite2D2")
+ProximityRevealShader = ExtResource("28_rhl3w")

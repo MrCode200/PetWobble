@@ -9,7 +9,20 @@
 </div>
 
 
-(I don't have much time (as you can see by dev hours,), but i will def add here image later, thx for understanding <3 (*ˊᗜˋ*)/ᵗᑋᵃᐢᵏ ᵞᵒᵘ*)
+<p align="center">
+<a
+    href="https://github.com/MrCode200/PetWobble/raw/refs/heads/main/Git/Assets/Wobble Example.mp4"
+    download="Wobble-Example.mp4"
+  >
+<img
+    src="Git/Assets/Preview.png"
+    alt="Download gameplay preview"
+    width=400
+    style="border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); "
+/>
+    </a>
+</p>
+(~~I don't have much time, but i will def add here image later,~~ thx for understanding <3 (*ˊᗜˋ*)/ᵗᑋᵃᐢᵏ ᵞᵒᵘ*)
 
 ## 🏁 Intro
 Have you ever dreamt of having a pet.
@@ -17,24 +30,45 @@ Not just any Pet..., A squishy, wobbly & cute PET!
 Then you are right here. Wobble is YOUR 🫵 Pet.
 Download him and watch him make your life better, in any possible way imaginable... (~not really still much in work and progress xd~)
 
-> [!NOTE]
-> On the latest releases the Jump/Idle have been disabled, 
-> the really amazing & satisfying softbody Physics ;b are enabled though (with dragging and mouse interactions).
 ## 💡 Features
-> NOW:
+> ***NOW:***
 > 1. Jump (boing boing 🐸)
-> 2. Idle (yes he needs also rest you monster `( ｡ •`ᴖ´• ｡))``
+> 2. Idle (yes he needs also rest you monster ``( ｡ •`ᴖ´• ｡))``
 > 3. Dragging (`smashing`work in progress lul)
-> 4. Self written Procedual Soft Body with Texture support 
+> 4. Self written Procedual Soft Body with Texture support
+> 5. ***YOUR*** Pet means ***YOURS***: You can open wobble up and configure him to your likings Σ(っ °Д °;)っ
+> → Import your own sprites\
+> → Configure the physics, lists and behaviors
 
-> FUTURE:
-> 1. Speach Bubble, Shop?!, Configs, 
-> 2. Smashing him into a wall and see him SUFFER 🔥, > 3. AI (maybe someday if i somehow get veeery good at it lul), 
+> ***FUTURE:***
+> 1. Speech Bubble, Shop?!,
+> 2. ~~Smashing him into a wall and~~ see him SUFFER 🔥, 
+> 3. AI (maybe someday if i somehow get veeery good at it lul),
 > 4. and `reactive reactions/emotes`
 
 ## 😭 Hardships
 I tried coding in c# (sry to itch.io fans), and while i also tried to use this new tool called **LimboAI** in godot, it was so :dolphin_noises:*** hard to make it work. I hope to learn much more by challenging myself on a fun project :)), (so wish me good luck fellas 🥲)
-Also the physics soft body i tried to write has maken it really difficult with extreme challenges on how to morph the slime body (thats the hole reason why hes a slime), without breaking the physics
+Also the physics soft body I tried to write has maken it really difficult with extreme challenges on how to morph the slime body (thats the hole reason why hes a slime), without breaking the physics\
+PS. Self Collision has broken my soul xb
+
+## 🎮 Controls
+1. Drag to move 
+2. Mouse Pusher → Poke him to watch him `Jiggleligle`
+3. Right Click → To open him up and configure him ⚙️
+> [!Note] 
+> Due to current logic constraints, dragging only gets registered at its Points (outer line)
+
+## ⚙️ Config
+The data is stored at: `%APPDATA%\Godot\app_userdata\`\
+Don't miss the arrows at the top right of the config screen. Cuz there is moooore to configure just a press away ;b
+> [!Tip]
+> Try the Debug toggle (at the bottom) they are really fun (ex. Drag View)
+
+<div align="center">
+    <img src="Git/Assets/config.png" height="400"
+    style="border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); "
+>
+</div>
 
 ## 📔 STORY
 Wobble isn't just a new creature from another dimension. He is a old creature risen to life from my old EvolutionSimulator where they clashed to get the beset genes ever, i just love him so much i had to resurrect him, and make him SUFFER more 👹
@@ -45,9 +79,9 @@ Go to releases and download the latest, then you can run the exe when you have e
 If you want to build it yourself, donwload the latest limboai godot build which supports dotnet :))
 
 ## ⚠️ WARNINGS
-- I could sadly only figure out windows release right now, as soon as i figure out the others i will publish them too, sry mac fans
-- ITCH.io doesn't work when coding godot.c#
+- Windows support is the only thing that works currently, as to make it transparent window i have to call native WinDll's
+- ITCH.io doesn't work when coding godot.c#, that's why i cant publish it there
 
-> [!NOTE] 
+> [!TIP]
 > HAVE fun playing with our fella :))
 

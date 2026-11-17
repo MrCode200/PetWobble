@@ -56,7 +56,6 @@ public partial class WobbleRollAction : BTAction
         {
             force = Mathf.Max(MinForce, Mathf.Lerp(0, Force, errorPercent));
         }        
-        GD.Print($"Roll Dir {dir} | Froce {force}");
         
         _sb.SBApi.ApplyForce(points, dir * force);
     }

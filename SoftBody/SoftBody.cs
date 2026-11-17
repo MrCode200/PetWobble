@@ -303,7 +303,7 @@ public partial class SoftBody : Polygon2D
 		Initialize();
 	}
 	
-	private void Initialize()
+	public void Initialize()
 	{
 		_jointList.Clear(); // InitJoints appends to this list, so it must be reset on rebuild
 		InitPoints();

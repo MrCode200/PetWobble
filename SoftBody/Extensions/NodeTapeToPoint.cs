@@ -11,7 +11,7 @@ public partial class NodeTapeToPoint : Node2D, IConfigurable, IConfigExtras
 	[Export] public Node2D Target;
 	[Export] public SoftBody SoftBody;
 	[Export] public bool IncludeCenterPoint = true;
-	[Export] public Array<float> PointDirections;
+	[Export] public Array<float> PointRadians;
 	[Export] public bool RotateWithSoftBody = true;
 	[Export] public bool GlobalDirection;
 	[Export] public bool HideNode; // note: shadows CanvasItem.Hide(), consider renaming to HideTarget
@@ -41,7 +41,7 @@ public partial class NodeTapeToPoint : Node2D, IConfigurable, IConfigExtras
 			case nameof(HideNode):
 				ApplyVisibility();
 				break;
-			case nameof(PointDirections): // anchors depend on the directions -> recompute
+			case nameof(PointRadians): // anchors depend on the directions -> recompute
 				if (SoftBody?.Points != null) OnSoftBodyInitialized();
 				break;
 		}
@@ -110,7 +110,7 @@ public partial class NodeTapeToPoint : Node2D, IConfigurable, IConfigExtras
 
 	private void OnSoftBodyInitialized()
 	{
-		_anchorPoints = (PointDirections ?? new Array<float>())
+		_anchorPoints = (PointRadians ?? new Array<float>())
 			.SelectMany<float, Point>(radian => SoftBody.SBApi.GetPointsAtRadians(radian))
 			.ToArray();
 
@@ -130,7 +130,7 @@ public partial class NodeTapeToPoint : Node2D, IConfigurable, IConfigExtras
 
 	private void SetAnchorPoints()
 	{
-		_anchorPoints = (PointDirections ?? new Array<float>())
+		_anchorPoints = (PointRadians ?? new Array<float>())
 			.SelectMany<float, Point>(
 				radian => SoftBody.SBApi.GetPointsAtRadians(
 					radian + SoftBody.SBApi.GetGlobalLocalAngleOffset()

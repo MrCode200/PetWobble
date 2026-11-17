@@ -29,6 +29,7 @@ public partial class ConfigScreen : Window
 		PropertyEditors.TextField,
 		PropertyEditors.CurveField,
 		PropertyEditors.ShapeField,
+		PropertyEditors.ArrayField,
 	};
 
 	[Export] public Godot.Collections.Array<Node> Targets { get; set; } = new();
@@ -44,7 +45,7 @@ public partial class ConfigScreen : Window
 
 	private readonly record struct Prop(
 		string Name, string Group, PropertyUsageFlags Usage,
-		Variant.Type Type, PropertyHint Hint, string HintString);
+		Variant.Type Type, PropertyHint Hint, string HintString, System.Type ClrType);
 
 	private TabContainer _tabs;
 	private readonly List<Section> _sections = new();
@@ -180,6 +181,13 @@ public partial class ConfigScreen : Window
 		Type = p.Type,
 		Hint = p.Hint,
 		HintString = p.HintString,
+		ClrType = p.ClrType,
+		Notify = () =>
+		{
+			if (!GodotObject.IsInstanceValid(s.Target)) return;
+			(s.Owner as IConfigurable)?.OnConfigChanged(p.Name);
+			Refresh(s);
+		},
 		Commit = v =>
 		{
 			if (!GodotObject.IsInstanceValid(s.Target)) return;
@@ -303,7 +311,11 @@ public partial class ConfigScreen : Window
 			if (hint.ToString().StartsWith("Layers")) continue;           // collision layers / masks
 			if (type == Variant.Type.Object && hint != PropertyHint.ResourceType) continue;
 
-			yield return new Prop(name, group, usage, type, hint, d["hint_string"].AsString());
+			System.Type clr = members.TryGetValue(name, out var mi)
+				? mi switch { FieldInfo f => f.FieldType, PropertyInfo pi => pi.PropertyType, _ => null }
+				: null;
+
+			yield return new Prop(name, group, usage, type, hint, d["hint_string"].AsString(), clr);
 		}
 	}
 

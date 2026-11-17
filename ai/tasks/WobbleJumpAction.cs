@@ -23,6 +23,7 @@ public partial class WobbleJumpAction : BTAction
     [Export] public Vector2 RadianRange = new(0, MathF.PI);
     [Export] public bool UseDirectionChange = true;
     [Export] public float StartingFromRadian = 4.7123889f;
+    [Export] public bool StartingFromFront = true;
     [Export] public required Curve DirectionChange;
     [Export] public bool UseGlobalDirections;
     

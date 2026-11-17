@@ -8,9 +8,13 @@
       <None Include="NuGet.config" />
     </ItemGroup>
     <ItemGroup>
+      <Folder Include=".github\" />
       <Folder Include=".godot\" />
     </ItemGroup>
     <ItemGroup>
+      <Content Include="Git\Assets\config.png" />
+      <Content Include="Git\Assets\Preview.png" />
+      <Content Include="Git\Assets\Wobble Example.mp4" />
       <Content Include="README.md" />
     </ItemGroup>
 </Project> 
