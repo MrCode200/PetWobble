@@ -82,6 +82,7 @@ If you want to build it yourself, donwload the latest limboai godot build which 
 ## ⚠️ WARNINGS
 - Windows support is the only thing that works currently, as to make it transparent window i have to call native WinDll's
 - ITCH.io doesn't work when coding godot.c#, that's why i cant publish it there
+- The config logic is written by claude and copy pasted, as i wanted others to have the same fun playing with the configs easily and myself to use my time efficiently implementing the physics and behaviorl logic. Thank you for understanding :))
 
 > [!TIP]
 > HAVE fun playing with our fella :))
