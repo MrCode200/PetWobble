@@ -36,8 +36,9 @@ Download him and watch him make your life better, in any possible way imaginable
 > 1. Jump (boing boing 🐸)
 > 2. Idle (yes he needs also rest you monster ``( ｡ •`ᴖ´• ｡))``
 > 3. Dragging (`smashing`work in progress lul)
-> 4. Self written Procedual Soft Body with Texture support
-> 5. ***YOUR*** Pet means ***YOURS***: You can open wobble up and configure him to your likings Σ(っ °Д °;)っ
+> 4. ROLLING (like a Stone, ... a wobbly stone)
+> 5. Self written Procedual Soft Body with Texture support
+> 6. ***YOUR*** Pet means ***YOURS***: You can open wobble up and configure him to your likings Σ(っ °Д °;)っ
 > → Import your own sprites\
 > → Configure the physics, lists and behaviors
 
