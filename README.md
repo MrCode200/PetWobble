@@ -72,6 +72,18 @@ Don't miss the arrows at the top right of the config screen. Cuz there is moooor
 >
 </div>
 
+### Fun configs to try
+After playing with the values, ... a lot..., i found these to be quite fun and interesting :))
+
+| Setting | Value / action | What it does |
+|---|---|---|
+| Bend strength | `2.6` to `3` | Makes the slime shiver |
+| Bend strength | `4` | Makes the slime break (like break break :o)|
+| Area pressure | `0` | Makes the slime falter |
+| Air drag + gravity | High air drag, very strong gravity | Makes it dive down wobbling like slime arrow |
+| Damping | Large value | Creates a slow motion, stretchy slime effect |
+| Freeze | Move over small objects | Can make the slime consume them like a slime (Effect achieved by dragging (Freezes Points from being simulated) |
+
 ## 📔 STORY
 Wobble isn't just a new creature from another dimension. He is a old creature risen to life from my old EvolutionSimulator where they clashed to get the beset genes ever, i just love him so much i had to resurrect him, and make him SUFFER more 👹
 
